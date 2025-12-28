@@ -1,6 +1,6 @@
-part of 'max_getx_video_controller.dart';
+part of 'max_video_controller.dart';
 
-class _MaxBaseController extends GetxController {
+class _MaxBaseController extends ChangeNotifier {
   ///main video controller
   VideoPlayerController? _videoCtr;
 
@@ -8,16 +8,10 @@ class _MaxBaseController extends GetxController {
   late MaxVideoPlayerType _videoPlayerType;
 
   bool isMute = false;
-  FocusNode? keyboardFocusWeb;
-
   bool autoPlay = true;
-  bool _isWebAutoPlayDone = false;
 
   ///
   MaxVideoState _maxVideoState = MaxVideoState.loading;
-
-  ///
-  bool isWebPopupOverlayOpen = false;
 
   ///
   Duration _videoDuration = Duration.zero;
@@ -46,11 +40,8 @@ class _MaxBaseController extends GetxController {
       // _listneToVideoState();
       _listneToVideoPosition();
       _listneToVolume();
-      if (kIsWeb && autoPlay && isMute && !_isWebAutoPlayDone) _webAutoPlay();
     }
   }
-
-  void _webAutoPlay() => _videoCtr!.setVolume(1);
 
   void _listneToVolume() {
     if (_videoCtr!.value.volume == 0) {
@@ -69,9 +60,9 @@ class _MaxBaseController extends GetxController {
   }
 
   ///updates state with id `_maxVideoState`
-  void maxVideoStateChanger(MaxVideoState? _val, {bool updateUi = true}) {
-    if (_maxVideoState != (_val ?? _maxVideoState)) {
-      _maxVideoState = _val ?? _maxVideoState;
+  void maxVideoStateChanger(MaxVideoState? val, {bool updateUi = true}) {
+    if (_maxVideoState != (val ?? _maxVideoState)) {
+      _maxVideoState = val ?? _maxVideoState;
       if (updateUi) {
         update(['maxVideoState']);
         update(['update-all']);
@@ -94,11 +85,10 @@ class _MaxBaseController extends GetxController {
     }
   }
 
-  void keyboadListner() {
-    if (keyboardFocusWeb != null && !keyboardFocusWeb!.hasFocus) {
-      if (keyboardFocusWeb!.canRequestFocus) {
-        keyboardFocusWeb!.requestFocus();
-      }
+  /// Shim for GetX update method
+  void update([List<Object>? ids, bool condition = true]) {
+    if (condition) {
+      notifyListeners();
     }
   }
 }

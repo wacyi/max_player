@@ -2,14 +2,12 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
-import 'package:universal_html/html.dart' as _html;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../max_player.dart';
-import 'controllers/max_getx_video_controller.dart';
+import 'controllers/max_video_controller.dart';
 import 'utils/logger.dart';
 import 'widgets/double_tap_icon.dart';
 import 'widgets/material_icon_button.dart';
@@ -22,17 +20,13 @@ part 'widgets/core/overlays/mobile_overlay.dart';
 
 part 'widgets/core/overlays/overlays.dart';
 
-part 'widgets/core/overlays/web_dropdown_menu.dart';
-
-part 'widgets/core/overlays/web_overlay.dart';
-
 part 'widgets/core/max_core_player.dart';
 
 part 'widgets/core/video_gesture_detector.dart';
 
 part 'widgets/full_screen_view.dart';
 
-class MaxVideoPlayer extends StatefulWidget {
+class MaxVideoPlayer extends ConsumerStatefulWidget {
   final MaxPlayerController controller;
   final double frameAspectRatio;
   final double videoAspectRatio;
@@ -82,9 +76,10 @@ class MaxVideoPlayer extends StatefulWidget {
   static bool enableGetxLogs = false;
 
   void addToUiController() {
-    Get.find<MaxGetXVideoController>(tag: controller.getTag)
+    // Direct assignment instead of Get.find
+    final maxCtr = controller.maxVideoController;
 
-      ///add to ui controller
+    maxCtr
       ..maxPlayerLabels = maxPlayerLabels
       ..alwaysShowProgressBar = alwaysShowProgressBar
       ..maxProgressBarConfig = maxProgressBarConfig
@@ -96,33 +91,40 @@ class MaxVideoPlayer extends StatefulWidget {
   }
 
   @override
-  State<MaxVideoPlayer> createState() => _MaxVideoPlayerState();
+  ConsumerState<MaxVideoPlayer> createState() => _MaxVideoPlayerState();
 }
 
-class _MaxVideoPlayerState extends State<MaxVideoPlayer>
+class _MaxVideoPlayerState extends ConsumerState<MaxVideoPlayer>
     with TickerProviderStateMixin {
-  late MaxGetXVideoController _maxCtr;
+  late MaxVideoController maxCtr;
 
-  // late String tag;
+  // Helper provider to expose the specific controller instance to children via ref.watch if needed,
+  // aka a scoped provider.
+  // For now, we reuse the controller instance from the widget.
+  // To make the entire tree reactive, children should use ChangeNotifierProvider.value logic
+  // or pass the controller down.
+  // `_MaxCoreVideoPlayer` and parts seem to get the controller via Get.find usually?
+  // We need to fix that. They likely rely on `Get.find(tag: ...)`.
+  // Since we are removing Get, we must pass the controller down or provide it.
+
+  // We will pass the controller instance to children where possible.
+  // OR we define a provider that children can read?
+  // The children are in `part` files so they can access `MaxVideoPlayer` scope if passed? No, parts are just code organization.
+
+  // Strategy:
+  // Since `part` files call `Get.find`, we MUST replace those `Get.find` calls too.
+  // The best way is to construct a Riverpod provider SCOPED to this widget?
+  // Riverpod doesn't support scoping easily without `ProviderScope`, which breaks inheritance/overlay things sometimes.
+  // Simpler: Passing `maxCtr` to sub-widgets.
+  // Sub-widgets currently take `tag`. We can change them to take `MaxVideoController controller`.
+
   @override
   void initState() {
     super.initState();
-    // tag = widget.controller?.tag ?? UniqueKey().toString();
-    _maxCtr = Get.put(
-      MaxGetXVideoController(),
-      permanent: true,
-      tag: widget.controller.getTag,
-    )..isVideoUiBinded = true;
-    if (_maxCtr.wasVideoPlayingOnUiDispose ?? false) {
-      _maxCtr.maxVideoStateChanger(MaxVideoState.playing, updateUi: false);
-    }
-    if (kIsWeb) {
-      if (widget.controller.maxPlayerConfig.forcedVideoFocus) {
-        _maxCtr.keyboardFocusWeb = FocusNode();
-        _maxCtr.keyboardFocusWeb?.addListener(_maxCtr.keyboadListner);
-      }
-      //to disable mouse right click
-      _html.document.onContextMenu.listen((event) => event.preventDefault());
+    maxCtr = widget.controller.maxVideoController..isVideoUiBinded = true;
+
+    if (maxCtr.wasVideoPlayingOnUiDispose ?? false) {
+      maxCtr.maxVideoStateChanger(MaxVideoState.playing, updateUi: false);
     }
   }
 
@@ -131,24 +133,22 @@ class _MaxVideoPlayerState extends State<MaxVideoPlayer>
     super.dispose();
 
     ///Checking if the video was playing when this widget is disposed
-    if (_maxCtr.isvideoPlaying) {
-      _maxCtr.wasVideoPlayingOnUiDispose = true;
+    if (maxCtr.isvideoPlaying) {
+      maxCtr.wasVideoPlayingOnUiDispose = true;
     } else {
-      _maxCtr.wasVideoPlayingOnUiDispose = false;
+      maxCtr.wasVideoPlayingOnUiDispose = false;
     }
-    _maxCtr
+    maxCtr
       ..isVideoUiBinded = false
       ..maxVideoStateChanger(MaxVideoState.paused, updateUi: false);
-    if (kIsWeb) {
-      _maxCtr.keyboardFocusWeb?.removeListener(_maxCtr.keyboadListner);
-    }
-    // _maxCtr.keyboardFocus?.unfocus();
-    // _maxCtr.keyboardFocusOnFullScreen?.unfocus();
-    _maxCtr.hoverOverlayTimer?.cancel();
-    _maxCtr.showOverlayTimer?.cancel();
-    _maxCtr.showOverlayTimer1?.cancel();
-    _maxCtr.leftDoubleTapTimer?.cancel();
-    _maxCtr.rightDoubleTapTimer?.cancel();
+
+    // maxCtr.keyboardFocus?.unfocus();
+    // maxCtr.keyboardFocusOnFullScreen?.unfocus();
+    maxCtr.hoverOverlayTimer?.cancel();
+    maxCtr.showOverlayTimer?.cancel();
+    maxCtr.showOverlayTimer1?.cancel();
+    maxCtr.leftDoubleTapTimer?.cancel();
+    maxCtr.rightDoubleTapTimer?.cancel();
     maxLog('local MaxVideoPlayer disposed');
   }
 
@@ -158,7 +158,7 @@ class _MaxVideoPlayerState extends State<MaxVideoPlayer>
   @override
   Widget build(BuildContext context) {
     final circularProgressIndicator = _thumbnailAndLoadingWidget();
-    _maxCtr.mainContext = context;
+    maxCtr.mainContext = context;
 
     final _videoErrorWidget = AspectRatio(
       aspectRatio: _frameAspectRatio,
@@ -180,27 +180,32 @@ class _MaxVideoPlayerState extends State<MaxVideoPlayer>
         ),
       ),
     );
-    return GetBuilder<MaxGetXVideoController>(
-      tag: widget.controller.getTag,
-      builder: (_) {
+
+    // Replace GetBuilder with ListenableBuilder (built-in Flutter) since MaxVideoController is ChangeNotifier
+    // or use ref.watch if we put it in a provider.
+    // ListenableBuilder is simpler here since we have the instance.
+    return ListenableBuilder(
+      listenable: maxCtr,
+      builder: (context, _) {
         _frameAspectRatio = widget.matchFrameAspectRatioToVideo
-            ? _maxCtr.videoCtr?.value.aspectRatio ?? widget.frameAspectRatio
+            ? maxCtr.videoCtr?.value.aspectRatio ?? widget.frameAspectRatio
             : widget.frameAspectRatio;
         return Center(
           child: ColoredBox(
-            color: widget.backgroundColor ?? Colors.black,
-            child: GetBuilder<MaxGetXVideoController>(
-              tag: widget.controller.getTag,
-              id: 'errorState',
-              builder: (_maxCtr) {
+            color: widget.backgroundColor ??
+                maxCtr.maxPlayerConfig.theme?.backgroundColor ??
+                Colors.black,
+            child: Builder(
+              // Replaces inner GetBuilder(id: 'errorState') - actually external builder rebuilds everything so fine
+              builder: (context) {
                 /// Check if has any error
-                if (_maxCtr.maxVideoState == MaxVideoState.error) {
+                if (maxCtr.maxVideoState == MaxVideoState.error) {
                   return widget.onVideoError?.call() ?? _videoErrorWidget;
                 }
 
                 return AspectRatio(
                   aspectRatio: _frameAspectRatio,
-                  child: _maxCtr.videoCtr?.value.isInitialized ?? false
+                  child: maxCtr.videoCtr?.value.isInitialized ?? false
                       ? _buildPlayer()
                       : Center(child: circularProgressIndicator),
                 );
@@ -246,27 +251,13 @@ class _MaxVideoPlayerState extends State<MaxVideoPlayer>
 
   Widget _buildPlayer() {
     final _videoAspectRatio = widget.matchVideoAspectRatioToFrame
-        ? _maxCtr.videoCtr?.value.aspectRatio ?? widget.videoAspectRatio
+        ? maxCtr.videoCtr?.value.aspectRatio ?? widget.videoAspectRatio
         : widget.videoAspectRatio;
-    if (kIsWeb) {
-      return GetBuilder<MaxGetXVideoController>(
-        tag: widget.controller.getTag,
-        id: 'full-screen',
-        builder: (_maxCtr) {
-          if (_maxCtr.isFullScreen) return _thumbnailAndLoadingWidget();
-          return _MaxCoreVideoPlayer(
-            videoPlayerCtr: _maxCtr.videoCtr!,
-            videoAspectRatio: _videoAspectRatio,
-            tag: widget.controller.getTag,
-          );
-        },
-      );
-    } else {
-      return _MaxCoreVideoPlayer(
-        videoPlayerCtr: _maxCtr.videoCtr!,
-        videoAspectRatio: _videoAspectRatio,
-        tag: widget.controller.getTag,
-      );
-    }
+    return _MaxCoreVideoPlayer(
+      videoPlayerCtr: maxCtr.videoCtr!,
+      videoAspectRatio: _videoAspectRatio,
+      tag: widget.controller.getTag,
+      controller: maxCtr,
+    );
   }
 }

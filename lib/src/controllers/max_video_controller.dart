@@ -1,256 +1,285 @@
-part of 'max_getx_video_controller.dart';
+import 'dart:async';
 
-class _MaxVideoController extends _MaxUiController {
-  Timer? showOverlayTimer;
-  Timer? showOverlayTimer1;
+import 'package:flutter/cupertino.dart';
 
-  bool isOverlayVisible = true;
-  bool isLooping = false;
-  bool isFullScreen = false;
-  bool isvideoPlaying = false;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-  List<String> videoPlaybackSpeeds = [
-    '0.25x',
-    '0.5x',
-    '0.75x',
-    '1x',
-    '1.25x',
-    '1.5x',
-    '1.75x',
-    '2x',
-  ];
+import 'package:wakelock_plus/wakelock_plus.dart';
+
+import '../../max_player.dart';
+import '../utils/logger.dart';
+import '../utils/video_apis.dart';
+
+part 'max_base_controller.dart';
+part 'max_gestures_controller.dart';
+part 'max_ui_controller.dart';
+part 'max_control_controller.dart';
+part 'max_video_quality_controller.dart';
+
+class MaxVideoController extends _MaxGesturesController {
+  ///main videoplayer controller
+  VideoPlayerController? get videoCtr => _videoCtr;
+
+  ///maxVideoPlayer state notifier
+  MaxVideoState get maxVideoState => _maxVideoState;
+
+  ///vimeo or general --video player type
+  MaxVideoPlayerType get videoPlayerType => _videoPlayerType;
+
+  String get currentPaybackSpeed => _currentPaybackSpeed;
 
   ///
+  Duration get videoDuration => _videoDuration;
 
-  ///*seek video
-  /// Seek video to a duration.
-  Future<void> seekTo(Duration moment) async {
-    await _videoCtr!.seekTo(moment);
+  ///
+  Duration get videoPosition => _videoPosition;
+
+  bool controllerInitialized = false;
+  late MaxPlayerConfig maxPlayerConfig;
+  late PlayVideoFrom playVideoFrom;
+  void config({
+    required PlayVideoFrom playVideoFrom,
+    required MaxPlayerConfig playerConfig,
+  }) {
+    this.playVideoFrom = playVideoFrom;
+    _videoPlayerType = playVideoFrom.playerType;
+    maxPlayerConfig = playerConfig;
+    autoPlay = playerConfig.autoPlay;
+    isLooping = playerConfig.isLooping;
   }
 
-  /// Seek video forward by the duration.
-  Future<void> seekForward(Duration videoSeekDuration) async {
-    await seekTo(_videoCtr!.value.position + videoSeekDuration);
-  }
+  ///*init
+  Future<void> videoInit() async {
+    ///
+    // checkPlayerType();
+    maxLog(_videoPlayerType.toString());
+    try {
+      await _initializePlayer();
+      await _videoCtr?.initialize();
+      _videoDuration = _videoCtr?.value.duration ?? Duration.zero;
+      await setLooping(isLooping);
+      _videoCtr?.addListener(videoListner);
+      // Replaced addListenerId with addListener.
+      // maxVideoState changes will trigger notifyListeners(), so we just listen generally.
+      // However, we need to ensure maxStateListner execution context.
+      // Since maxVideoStateChanger calls update which calls notifyListeners,
+      // and maxStateListner logic depends on _maxVideoState, we can call it directly inside maxVideoStateChanger?
+      // Or just add it as a listener.
+      // ISSUE: calling maxStateListner here adds it to general listeners,
+      // but maxStateListner might trigger logic that shouldn't run on EVERY update.
+      // BUT MaxVideoState only changes rarely.
+      // Let's hook it differently: override maxVideoStateChanger.
 
-  /// Seek video backward by the duration.
-  Future<void> seekBackward(Duration videoSeekDuration) async {
-    await seekTo(_videoCtr!.value.position - videoSeekDuration);
-  }
+      // For now, attaching it as a general listener, but ensuring it's robust.
+      // Actually, maxVideoStateChanger logic calls update.
+      // The original code listed to 'maxVideoState'.
+      // I will override maxVideoStateChanger in this class to call maxStateListner directly too?
+      // No, let's keep it simple. addListener(maxStateListner) means it runs on ANY update.
+      // That might be too much.
+      // Better approach: In maxVideoStateChanger (which is in base), we can't easily hook.
+      // I will rely on the fact that maxStateListner does a switch on _maxVideoState.
+      // If the state hasn't effectively changed to something new that needs action...
+      // Original code only fired 'update' on state change.
 
-  ///mute
-  /// Toggle mute.
-  Future<void> toggleMute() async {
-    isMute = !isMute;
-    if (isMute) {
-      await mute();
-    } else {
-      await unMute();
-    }
-  }
+      // I will remove the listener approach and instead call `maxStateListner` manually
+      // whenever `maxVideoStateChanger` changes the state.
+      // But `maxVideoStateChanger` is in the base class.
+      // I'll override `maxVideoStateChanger`.
 
-  Future<void> mute() async {
-    await setVolume(0);
-    update(['volume']);
-    update(['update-all']);
-  }
+      // addListener(maxStateListner); // This would run on video position updates too! BAD.
 
-  Future<void> unMute() async {
-    await setVolume(1);
-    update(['volume']);
-    update(['update-all']);
-  }
+      checkAutoPlayVideo();
+      controllerInitialized = true;
+      notifyListeners(); // Replced update()
 
-// Set volume between 0.0 - 1.0,
-  /// 0.0 is mute and 1.0 max volume.
-  Future<void> setVolume(
-    double volume,
-  ) async {
-    await _videoCtr?.setVolume(volume);
-    if (volume <= 0) {
-      isMute = true;
-    } else {
-      isMute = false;
-    }
-    update(['volume']);
-    update(['update-all']);
-  }
-
-  ///*controll play pause
-  Future<void> playVideo(bool val) async {
-    isvideoPlaying = val;
-    if (isvideoPlaying) {
-      isShowOverlay(true);
+      update(['update-all']);
       // ignore: unawaited_futures
-      _videoCtr?.play();
-      isShowOverlay(false, delay: const Duration(seconds: 1));
-    } else {
-      isShowOverlay(true);
-      // ignore: unawaited_futures
-      _videoCtr?.pause();
+      Future.delayed(const Duration(milliseconds: 600));
+    } catch (e) {
+      maxVideoStateChanger(MaxVideoState.error);
+      update(['errorState']);
+      update(['update-all']);
+      maxLog('ERROR ON max_PLAYER:  $e');
+      rethrow;
     }
   }
 
-  ///toogle play pause
-  void togglePlayPauseVideo() {
-    isvideoPlaying = !isvideoPlaying;
-    maxVideoStateChanger(
-      isvideoPlaying ? MaxVideoState.playing : MaxVideoState.paused,
-    );
+  @override
+  void maxVideoStateChanger(MaxVideoState? val, {bool updateUi = true}) {
+    super.maxVideoStateChanger(val, updateUi: updateUi);
+    // Call listener logic when state changes
+    if (val != null) {
+      maxStateListner();
+    }
   }
 
-  ///toogle video player controls
-  void isShowOverlay(bool val, {Duration? delay}) {
-    showOverlayTimer1?.cancel();
-    showOverlayTimer1 = Timer(delay ?? Duration.zero, () {
-      if (isOverlayVisible != val) {
-        isOverlayVisible = val;
-        update(['overlay']);
-        update(['update-all']);
+  Future<void> _initializePlayer() async {
+    switch (_videoPlayerType) {
+      case MaxVideoPlayerType.network:
+
+        ///
+        _videoCtr = VideoPlayerController.networkUrl(
+          Uri.parse(playVideoFrom.dataSource!),
+          closedCaptionFile: playVideoFrom.closedCaptionFile,
+          formatHint: playVideoFrom.formatHint,
+          videoPlayerOptions: playVideoFrom.videoPlayerOptions,
+          httpHeaders: playVideoFrom.httpHeaders,
+        );
+        playingVideoUrl = playVideoFrom.dataSource;
+        break;
+      case MaxVideoPlayerType.networkQualityUrls:
+        final url = await getUrlFromVideoQualityUrls(
+          qualityList: maxPlayerConfig.videoQualityPriority,
+          videoUrls: playVideoFrom.videoQualityUrls!,
+        );
+
+        ///
+        _videoCtr = VideoPlayerController.networkUrl(
+          Uri.parse(url),
+          closedCaptionFile: playVideoFrom.closedCaptionFile,
+          formatHint: playVideoFrom.formatHint,
+          videoPlayerOptions: playVideoFrom.videoPlayerOptions,
+          httpHeaders: playVideoFrom.httpHeaders,
+        );
+        playingVideoUrl = url;
+
+        break;
+      case MaxVideoPlayerType.youtube:
+        final urls = await getVideoQualityUrlsFromYoutube(
+          playVideoFrom.dataSource!,
+          playVideoFrom.live,
+        );
+        final url = await getUrlFromVideoQualityUrls(
+          qualityList: maxPlayerConfig.videoQualityPriority,
+          videoUrls: urls,
+        );
+
+        ///
+        _videoCtr = VideoPlayerController.networkUrl(
+          Uri.parse(url),
+          closedCaptionFile: playVideoFrom.closedCaptionFile,
+          formatHint: playVideoFrom.formatHint,
+          videoPlayerOptions: playVideoFrom.videoPlayerOptions,
+          httpHeaders: playVideoFrom.httpHeaders,
+        );
+        playingVideoUrl = url;
+
+        break;
+      case MaxVideoPlayerType.vimeo:
+        await getQualityUrlsFromVimeoId(
+          playVideoFrom.dataSource!,
+          hash: playVideoFrom.hash,
+        );
+        final url = await getUrlFromVideoQualityUrls(
+          qualityList: maxPlayerConfig.videoQualityPriority,
+          videoUrls: vimeoOrVideoUrls,
+        );
+
+        _videoCtr = VideoPlayerController.networkUrl(
+          Uri.parse(url),
+          closedCaptionFile: playVideoFrom.closedCaptionFile,
+          formatHint: playVideoFrom.formatHint,
+          videoPlayerOptions: playVideoFrom.videoPlayerOptions,
+          httpHeaders: playVideoFrom.httpHeaders,
+        );
+        playingVideoUrl = url;
+
+        break;
+      case MaxVideoPlayerType.asset:
+
+        ///
+        _videoCtr = VideoPlayerController.asset(
+          playVideoFrom.dataSource!,
+          closedCaptionFile: playVideoFrom.closedCaptionFile,
+          package: playVideoFrom.package,
+          videoPlayerOptions: playVideoFrom.videoPlayerOptions,
+        );
+        playingVideoUrl = playVideoFrom.dataSource;
+
+        break;
+      case MaxVideoPlayerType.file:
+
+        ///
+        _videoCtr = VideoPlayerController.file(
+          playVideoFrom.file!,
+          closedCaptionFile: playVideoFrom.closedCaptionFile,
+          videoPlayerOptions: playVideoFrom.videoPlayerOptions,
+        );
+
+        break;
+      case MaxVideoPlayerType.vimeoPrivateVideos:
+        await getQualityUrlsFromVimeoPrivateId(
+          playVideoFrom.dataSource!,
+          playVideoFrom.httpHeaders,
+        );
+        final url = await getUrlFromVideoQualityUrls(
+          qualityList: maxPlayerConfig.videoQualityPriority,
+          videoUrls: vimeoOrVideoUrls,
+        );
+
+        _videoCtr = VideoPlayerController.networkUrl(
+          Uri.parse(url),
+          closedCaptionFile: playVideoFrom.closedCaptionFile,
+          formatHint: playVideoFrom.formatHint,
+          videoPlayerOptions: playVideoFrom.videoPlayerOptions,
+          httpHeaders: playVideoFrom.httpHeaders,
+        );
+        playingVideoUrl = url;
+
+        break;
+    }
+  }
+
+  ///Listning on keyboard events
+  void onKeyBoardEvents({
+    required KeyEvent event,
+    required BuildContext appContext,
+    required String tag,
+  }) {}
+
+  ///this func will listne to update id `_maxVideoState`
+  void maxStateListner() {
+    maxLog(_maxVideoState.toString());
+    switch (_maxVideoState) {
+      case MaxVideoState.playing:
+        if (maxPlayerConfig.wakelockEnabled) WakelockPlus.enable();
+        playVideo(true);
+        break;
+      case MaxVideoState.paused:
+        if (maxPlayerConfig.wakelockEnabled) WakelockPlus.disable();
+        playVideo(false);
+        break;
+      case MaxVideoState.loading:
+        isShowOverlay(true);
+        break;
+      case MaxVideoState.error:
+        if (maxPlayerConfig.wakelockEnabled) WakelockPlus.disable();
+        playVideo(false);
+        break;
+    }
+  }
+
+  ///checkes wether video should be `autoplayed` initially
+  void checkAutoPlayVideo() {
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
+      if (autoPlay && (isVideoUiBinded ?? false)) {
+        maxVideoStateChanger(MaxVideoState.playing);
+      } else {
+        maxVideoStateChanger(MaxVideoState.paused);
       }
     });
   }
 
-  ///overlay above video contrller
-  void toggleVideoOverlay() {
-    if (!isOverlayVisible) {
-      isOverlayVisible = true;
-      update(['overlay']);
-      update(['update-all']);
-      return;
-    }
-    if (isOverlayVisible) {
-      isOverlayVisible = false;
-      update(['overlay']);
-      update(['update-all']);
-      showOverlayTimer?.cancel();
-      showOverlayTimer = Timer(const Duration(seconds: 3), () {
-        if (isOverlayVisible) {
-          isOverlayVisible = false;
-          update(['overlay']);
-          update(['update-all']);
-        }
-      });
-    }
-  }
-
-  void setVideoPlayBack(String _speed) {
-    late double pickedSpeed;
-
-    if (_speed == 'Normal') {
-      pickedSpeed = 1.0;
-      _currentPaybackSpeed = 'Normal';
-    } else {
-      pickedSpeed = double.parse(_speed.split('x').first);
-      _currentPaybackSpeed = _speed;
-    }
-    _videoCtr?.setPlaybackSpeed(pickedSpeed);
-  }
-
-  Future<void> setLooping(bool _isLooped) async {
-    isLooping = _isLooped;
-    await _videoCtr?.setLooping(isLooping);
-  }
-
-  Future<void> toggleLooping() async {
-    isLooping = !isLooping;
-    await _videoCtr?.setLooping(isLooping);
-    update();
-    update(['update-all']);
-  }
-
-  Future<void> enableFullScreen(String tag) async {
-    maxLog('-full-screen-enable-entred');
-    if (!isFullScreen) {
-      if (onToggleFullScreen != null) {
-        await onToggleFullScreen!(true);
-      } else {
-        await Future.wait([
-          SystemChrome.setPreferredOrientations(
-            [
-              if (!kIsWeb) DeviceOrientation.landscapeLeft,
-              DeviceOrientation.landscapeRight,
-            ],
-          ),
-          SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky),
-        ]);
-      }
-
-      _enableFullScreenView(tag);
-      isFullScreen = true;
-      WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-        update(['full-screen']);
-        update(['update-all']);
-      });
-    }
-  }
-
-  Future<void> disableFullScreen(
-    BuildContext context,
-    String tag, {
-    bool enablePop = true,
+  Future<void> changeVideo({
+    required PlayVideoFrom playVideoFrom,
+    required MaxPlayerConfig playerConfig,
   }) async {
-    maxLog('-full-screen-disable-entred');
-    if (isFullScreen) {
-      if (onToggleFullScreen != null) {
-        await onToggleFullScreen!(false);
-      } else {
-        await Future.wait([
-          SystemChrome.setPreferredOrientations([
-            DeviceOrientation.portraitUp,
-            DeviceOrientation.portraitDown,
-          ]),
-          SystemChrome.setPreferredOrientations(DeviceOrientation.values),
-          SystemChrome.setEnabledSystemUIMode(
-            SystemUiMode.manual,
-            overlays: SystemUiOverlay.values,
-          ),
-        ]);
-      }
-
-      if (enablePop) _exitFullScreenView(context, tag);
-      isFullScreen = false;
-      update(['full-screen']);
-      update(['update-all']);
-    }
-  }
-
-  void _exitFullScreenView(BuildContext context, String tag) {
-    maxLog('popped-full-screen');
-    Navigator.of(fullScreenContext).pop();
-  }
-
-  void _enableFullScreenView(String tag) {
-    if (!isFullScreen) {
-      maxLog('full-screen-enabled');
-
-      Navigator.push(
-        mainContext,
-        PageRouteBuilder(
-          fullscreenDialog: true,
-          pageBuilder: (BuildContext context, _, __) => FullScreenView(
-            tag: tag,
-          ),
-          reverseTransitionDuration: const Duration(milliseconds: 400),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
-        ),
-      );
-    }
-  }
-
-  /// Calculates video `position` or `duration`
-  String calculateVideoDuration(Duration _duration) {
-    final _totalHour = _duration.inHours == 0 ? '' : '${_duration.inHours}:';
-    final _totalMinute = _duration.toString().split(':')[1];
-    final _totalSeconds = (_duration - Duration(minutes: _duration.inMinutes))
-        .inSeconds
-        .toString()
-        .padLeft(2, '0');
-    final String videoLength = '$_totalHour$_totalMinute:$_totalSeconds';
-    return videoLength;
+    _videoCtr?.removeListener(videoListner);
+    maxVideoStateChanger(MaxVideoState.paused);
+    maxVideoStateChanger(MaxVideoState.loading);
+    vimeoOrVideoUrls = [];
+    config(playVideoFrom: playVideoFrom, playerConfig: playerConfig);
+    await videoInit();
   }
 }

@@ -2,9 +2,12 @@ part of 'package:max_player/src/max_player.dart';
 
 class FullScreenView extends StatefulWidget {
   final String tag;
+  final MaxVideoController controller;
+
   const FullScreenView({
     Key? key,
     required this.tag,
+    required this.controller,
   }) : super(key: key);
 
   @override
@@ -13,63 +16,51 @@ class FullScreenView extends StatefulWidget {
 
 class _FullScreenViewState extends State<FullScreenView>
     with TickerProviderStateMixin {
-  late MaxGetXVideoController _maxCtr;
+  late MaxVideoController maxCtr;
   @override
   void initState() {
-    _maxCtr = Get.find<MaxGetXVideoController>(tag: widget.tag);
-    _maxCtr.fullScreenContext = context;
-    _maxCtr.keyboardFocusWeb?.removeListener(_maxCtr.keyboadListner);
-
+    maxCtr = widget.controller;
+    maxCtr.fullScreenContext = context;
     super.initState();
   }
 
   @override
-  void dispose() {
-    _maxCtr.keyboardFocusWeb?.requestFocus();
-    _maxCtr.keyboardFocusWeb?.addListener(_maxCtr.keyboadListner);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final loadingWidget = _maxCtr.onLoading?.call(context) ??
-        const CircularProgressIndicator(
-          backgroundColor: Colors.black87,
-          color: Colors.white,
+    final theme = maxCtr.maxPlayerConfig.theme;
+    final loadingWidget = maxCtr.onLoading?.call(context) ??
+        CircularProgressIndicator(
+          backgroundColor: theme?.backgroundColor ?? Colors.black87,
+          color: theme?.iconColor ?? Colors.white,
           strokeWidth: 2,
         );
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (kIsWeb) {
-          await _maxCtr.disableFullScreen(
-            context,
-            widget.tag,
-            enablePop: false,
-          );
-        }
-        if (!kIsWeb) await _maxCtr.disableFullScreen(context, widget.tag);
-        return true;
+    return PopScope(
+      canPop: false, // Prevent default pop to allow async cleanup
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Trigger disableFullScreen which handles orientation and then pops
+        await maxCtr.disableFullScreen(context, widget.tag);
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: GetBuilder<MaxGetXVideoController>(
-          tag: widget.tag,
-          builder: (_maxCtr) => Center(
+        backgroundColor: theme?.backgroundColor ?? Colors.black,
+        body: ListenableBuilder(
+          listenable: maxCtr,
+          builder: (context, _) => Center(
             child: ColoredBox(
-              color: Colors.black,
+              color: theme?.backgroundColor ?? Colors.black,
               child: SizedBox(
                 height: MediaQuery.of(context).size.height,
                 width: MediaQuery.of(context).size.width,
                 child: Center(
-                  child: _maxCtr.videoCtr == null
+                  child: maxCtr.videoCtr == null
                       ? loadingWidget
-                      : _maxCtr.videoCtr!.value.isInitialized
+                      : maxCtr.videoCtr!.value.isInitialized
                           ? _MaxCoreVideoPlayer(
                               tag: widget.tag,
-                              videoPlayerCtr: _maxCtr.videoCtr!,
+                              videoPlayerCtr: maxCtr.videoCtr!,
                               videoAspectRatio:
-                                  _maxCtr.videoCtr?.value.aspectRatio ?? 16 / 9,
+                                  maxCtr.videoCtr?.value.aspectRatio ?? 16 / 9,
+                              controller: maxCtr, // Pass controller
                             )
                           : loadingWidget,
                 ),

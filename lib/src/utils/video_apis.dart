@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'dart:developer';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/http.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/vimeo_models.dart';
 
@@ -14,12 +12,10 @@ String maxErrorString(String val) {
 class VideoApis {
   static Future<Response> _makeRequestHash(String videoId, String? hash) {
     if (hash == null) {
-      return http.get(
-        Uri.parse('https://player.vimeo.com/video/$videoId/config'),
-      );
+      return Dio().get('https://player.vimeo.com/video/$videoId/config');
     } else {
-      return http.get(
-        Uri.parse('https://player.vimeo.com/video/$videoId/config?h=$hash'),
+      return Dio().get(
+        'https://player.vimeo.com/video/$videoId/config?h=$hash',
       );
     }
   }
@@ -30,8 +26,8 @@ class VideoApis {
   ) async {
     try {
       final response = await _makeRequestHash(videoId, hash);
-      final jsonData =
-          jsonDecode(response.body)['request']['files']['progressive'];
+      // Dio automatically decodes JSON response.body equivalent is response.data
+      final jsonData = response.data['request']['files']['progressive'];
       final progressiveUrls = List.generate(
         jsonData.length,
         (index) => VideoQalityUrls(
@@ -42,8 +38,7 @@ class VideoApis {
         ),
       );
       if (progressiveUrls.isEmpty) {
-        final jsonRes =
-            jsonDecode(response.body)['request']['files']['hls']['cdns'];
+        final jsonRes = response.data['request']['files']['hls']['cdns'];
         for (final element in (jsonRes as Map).entries.toList()) {
           progressiveUrls.add(
             VideoQalityUrls(
@@ -73,11 +68,13 @@ class VideoApis {
     Map<String, String> httpHeader,
   ) async {
     try {
-      final response = await http.get(
-        Uri.parse('https://api.vimeo.com/videos/$videoId'),
-        headers: httpHeader,
+      // Dio headers are Map<String, dynamic>?
+      final response = await Dio().get(
+        'https://api.vimeo.com/videos/$videoId',
+        options: Options(headers: httpHeader),
       );
-      final jsonData = jsonDecode(response.body)['files'];
+
+      final jsonData = response.data['files'];
 
       final List<VideoQalityUrls> list = [];
       for (int i = 0; i < jsonData.length; i++) {

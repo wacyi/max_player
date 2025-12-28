@@ -1,4 +1,4 @@
-part of 'max_getx_video_controller.dart';
+part of 'max_video_controller.dart';
 
 class _MaxUiController extends _MaxBaseController {
   bool alwaysShowProgressBar = true;

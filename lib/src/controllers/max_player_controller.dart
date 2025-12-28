@@ -1,17 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:get/get.dart';
-import 'package:universal_html/html.dart' as html;
-import 'package:wakelock/wakelock.dart';
+
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../max_player.dart';
 import '../utils/logger.dart';
 import '../utils/video_apis.dart';
-import 'max_getx_video_controller.dart';
+import 'max_video_controller.dart'; // File name unchanged, but class is MaxVideoController
 
 class MaxPlayerController {
-  late MaxGetXVideoController _ctr;
+  late MaxVideoController _ctr;
   late String getTag;
   bool _isCtrInitialised = false;
 
@@ -30,13 +29,16 @@ class MaxPlayerController {
 
   void _init() {
     getTag = UniqueKey().toString();
-    Get.config(enableLog: MaxVideoPlayer.enableGetxLogs);
-    _ctr = Get.put(MaxGetXVideoController(), permanent: true, tag: getTag)
+    // Get.config(enableLog: MaxVideoPlayer.enableGetxLogs); // Removed Get
+    _ctr = MaxVideoController()
       ..config(
         playVideoFrom: playVideoFrom,
         playerConfig: maxPlayerConfig,
       );
   }
+
+  /// Expose the internal controller for UI binding
+  MaxVideoController get maxVideoController => _ctr;
 
   /// Initializes the video player.
   ///
@@ -165,12 +167,15 @@ class MaxPlayerController {
     _isCtrInitialised = false;
     _ctr.videoCtr?.removeListener(_ctr.videoListner);
     _ctr.videoCtr?.dispose();
-    _ctr.removeListenerId('maxVideoState', _ctr.maxStateListner);
-    if (maxPlayerConfig.wakelockEnabled) Wakelock.disable();
-    Get.delete<MaxGetXVideoController>(
-      force: true,
-      tag: getTag,
-    );
+    // _ctr.removeListenerId('maxVideoState', _ctr.maxStateListner); // Removed
+    if (maxPlayerConfig.wakelockEnabled) WakelockPlus.disable();
+    // Get.delete<MaxGetXVideoController>( // Removed Get.delete
+    //   force: true,
+    //   tag: getTag,
+    // );
+    // Since we created it, we should dispose it or let GC handle it?
+    // It's a ChangeNotifier now. Ideally we dispose it.
+    _ctr.dispose();
     maxLog('$getTag Max player Disposed');
   }
 
@@ -196,17 +201,17 @@ class MaxPlayerController {
   }
 
   ///Moves video forward from current duration to `_duration`
-  Future<void> videoSeekForward(Duration _duration) async {
+  Future<void> videoSeekForward(Duration duration) async {
     await _checkAndWaitTillInitialized();
     if (!_isCtrInitialised) return;
-    return _ctr.seekForward(_duration);
+    return _ctr.seekForward(duration);
   }
 
   ///Moves video backward from current duration to `_duration`
-  Future<void> videoSeekBackward(Duration _duration) async {
+  Future<void> videoSeekBackward(Duration duration) async {
     await _checkAndWaitTillInitialized();
     if (!_isCtrInitialised) return;
-    return _ctr.seekBackward(_duration);
+    return _ctr.seekBackward(duration);
   }
 
   ///on right double tap
@@ -228,7 +233,6 @@ class MaxPlayerController {
   /// If onToggleFullScreen is set, you must handle the device
   /// orientation by yourself.
   void enableFullScreen() {
-    html.document.documentElement?.requestFullscreen();
     _ctr.enableFullScreen(getTag);
   }
 
@@ -237,11 +241,7 @@ class MaxPlayerController {
   /// If onToggleFullScreen is set, you must handle the device
   /// orientation by yourself.
   void disableFullScreen(BuildContext context) {
-    html.document.exitFullscreen();
-
-    if (!_ctr.isWebPopupOverlayOpen) {
-      _ctr.disableFullScreen(context, getTag);
-    }
+    _ctr.disableFullScreen(context, getTag);
   }
 
   /// listener for the changes in the quality of the video

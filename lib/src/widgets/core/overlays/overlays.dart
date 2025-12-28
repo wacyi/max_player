@@ -2,59 +2,57 @@ part of 'package:max_player/src/max_player.dart';
 
 class _VideoOverlays extends StatelessWidget {
   final String tag;
+  final MaxVideoController controller;
 
-  const _VideoOverlays({
-    Key? key,
-    required this.tag,
-  }) : super(key: key);
+  const _VideoOverlays({Key? key, required this.tag, required this.controller})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final _maxCtr = Get.find<MaxGetXVideoController>(tag: tag);
-    if (_maxCtr.overlayBuilder != null) {
-      return GetBuilder<MaxGetXVideoController>(
-        id: 'update-all',
-        tag: tag,
-        builder: (_maxCtr) {
+    final maxCtr = controller;
+    if (maxCtr.overlayBuilder != null) {
+      return ListenableBuilder(
+        listenable: maxCtr,
+        builder: (context, _) {
           ///Custom overlay
-          final _progressBar = MaxProgressBar(
+          final progressBar = MaxProgressBar(
             tag: tag,
-            maxProgressBarConfig: _maxCtr.maxProgressBarConfig,
+            maxProgressBarConfig: maxCtr.maxProgressBarConfig,
+            controller: maxCtr,
           );
           final overlayOptions = OverLayOptions(
-            maxVideoState: _maxCtr.maxVideoState,
-            videoDuration: _maxCtr.videoDuration,
-            videoPosition: _maxCtr.videoPosition,
-            isFullScreen: _maxCtr.isFullScreen,
-            isLooping: _maxCtr.isLooping,
-            isOverlayVisible: _maxCtr.isOverlayVisible,
-            isMute: _maxCtr.isMute,
-            autoPlay: _maxCtr.autoPlay,
-            currentVideoPlaybackSpeed: _maxCtr.currentPaybackSpeed,
-            videoPlayBackSpeeds: _maxCtr.videoPlaybackSpeeds,
-            videoPlayerType: _maxCtr.videoPlayerType,
-            maxProgresssBar: _progressBar,
+            maxVideoState: maxCtr.maxVideoState,
+            videoDuration: maxCtr.videoDuration,
+            videoPosition: maxCtr.videoPosition,
+            isFullScreen: maxCtr.isFullScreen,
+            isLooping: maxCtr.isLooping,
+            isOverlayVisible: maxCtr.isOverlayVisible,
+            isMute: maxCtr.isMute,
+            autoPlay: maxCtr.autoPlay,
+            currentVideoPlaybackSpeed: maxCtr.currentPaybackSpeed,
+            videoPlayBackSpeeds: maxCtr.videoPlaybackSpeeds,
+            videoPlayerType: maxCtr.videoPlayerType,
+            maxProgresssBar: progressBar,
+            // podProgresssBar removed as it is not defined/needed
           );
 
           /// Returns the custom overlay, otherwise returns the default
           /// overlay with gesture detector
-          return _maxCtr.overlayBuilder!(overlayOptions);
+          return maxCtr.overlayBuilder!(overlayOptions);
         },
       );
     } else {
       ///Built in overlay
-      return GetBuilder<MaxGetXVideoController>(
-        tag: tag,
-        id: 'overlay',
-        builder: (_maxCtr) {
+      return ListenableBuilder(
+        listenable: maxCtr,
+        builder: (context, _) {
           return AnimatedOpacity(
             duration: const Duration(milliseconds: 200),
-            opacity: _maxCtr.isOverlayVisible ? 1 : 0,
+            opacity: maxCtr.isOverlayVisible ? 1 : 0,
             child: Stack(
               fit: StackFit.passthrough,
               children: [
-                if (!kIsWeb) _MobileOverlay(tag: tag),
-                if (kIsWeb) _WebOverlay(tag: tag),
+                _MobileOverlay(tag: tag, controller: maxCtr),
               ],
             ),
           );

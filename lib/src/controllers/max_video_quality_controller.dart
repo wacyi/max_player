@@ -1,4 +1,4 @@
-part of 'max_getx_video_controller.dart';
+part of 'max_video_controller.dart';
 
 class _MaxVideoQualityController extends _MaxVideoController {
   ///
@@ -20,13 +20,13 @@ class _MaxVideoQualityController extends _MaxVideoController {
   }) async {
     try {
       maxVideoStateChanger(MaxVideoState.loading);
-      final _vimeoVideoUrls = await VideoApis.getVimeoVideoQualityUrls(
+      final vimeoVideoUrls = await VideoApis.getVimeoVideoQualityUrls(
         videoId,
         hash,
       );
 
       ///
-      vimeoOrVideoUrls = _vimeoVideoUrls ?? [];
+      vimeoOrVideoUrls = vimeoVideoUrls ?? [];
     } catch (e) {
       rethrow;
     }
@@ -38,11 +38,11 @@ class _MaxVideoQualityController extends _MaxVideoController {
   ) async {
     try {
       maxVideoStateChanger(MaxVideoState.loading);
-      final _vimeoVideoUrls =
+      final vimeoVideoUrls =
           await VideoApis.getVimeoPrivateVideoQualityUrls(videoId, httpHeader);
 
       ///
-      vimeoOrVideoUrls = _vimeoVideoUrls ?? [];
+      vimeoOrVideoUrls = vimeoVideoUrls ?? [];
     } catch (e) {
       rethrow;
     }
@@ -51,21 +51,18 @@ class _MaxVideoQualityController extends _MaxVideoController {
   void sortQualityVideoUrls(
     List<VideoQalityUrls>? urls,
   ) {
-    final _urls = urls;
+    final urlsToSorted = urls;
 
     ///has issues with 240p
-    _urls?.removeWhere((element) => element.quality == 240);
+    urlsToSorted?.removeWhere((element) => element.quality == 240);
 
     ///has issues with 144p in web
-    if (kIsWeb) {
-      _urls?.removeWhere((element) => element.quality == 144);
-    }
 
     ///sort
-    _urls?.sort((a, b) => a.quality.compareTo(b.quality));
+    urlsToSorted?.sort((a, b) => a.quality.compareTo(b.quality));
 
     ///
-    vimeoOrVideoUrls = _urls ?? [];
+    vimeoOrVideoUrls = urlsToSorted ?? [];
   }
 
   ///get vimeo quality `ex: 1080p` url
@@ -127,7 +124,7 @@ class _MaxVideoQualityController extends _MaxVideoController {
       maxVideoStateChanger(MaxVideoState.paused);
       maxVideoStateChanger(MaxVideoState.loading);
       playingVideoUrl = _videoQualityUrl;
-      _videoCtr = VideoPlayerController.network(_videoQualityUrl);
+      _videoCtr = VideoPlayerController.networkUrl(Uri.parse(_videoQualityUrl));
       await _videoCtr?.initialize();
       _videoDuration = _videoCtr?.value.duration ?? Duration.zero;
       _videoCtr?.addListener(videoListner);
