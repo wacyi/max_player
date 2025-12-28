@@ -31,11 +31,11 @@ typedef GetProgressBarHandlePaint = Paint Function({
 
 class MaxProgressBarConfig {
   const MaxProgressBarConfig({
-    this.playingBarColor = Colors.red,
-    this.bufferedBarColor = const Color.fromRGBO(255, 255, 255, 0.38),
-    this.circleHandlerColor = Colors.red,
+    this.playingBarColor,
+    this.bufferedBarColor,
+    this.circleHandlerColor,
     this.alwaysVisibleCircleHandler = false,
-    this.backgroundColor = const Color.fromRGBO(255, 255, 255, 0.24),
+    this.backgroundColor,
     this.getPlayedPaint,
     this.getBufferedPaint,
     this.getCircleHandlerPaint,
@@ -47,18 +47,18 @@ class MaxProgressBarConfig {
   });
 
   /// Color for played area, not applied if [getPlayedPaint] is provided.
-  final Color playingBarColor;
+  final Color? playingBarColor;
 
   /// Color for buffered area, not applied if [getBufferedPaint] is provided.
-  final Color bufferedBarColor;
+  final Color? bufferedBarColor;
 
   /// Color for handle, not applied if [getCircleHandlerPaint] is provided.
-  final Color circleHandlerColor;
+  final Color? circleHandlerColor;
 
   final bool alwaysVisibleCircleHandler;
 
   /// Color for background area, not applied if [getBackgroundPaint] is provided.
-  final Color backgroundColor;
+  final Color? backgroundColor;
 
   /// Paint for played area.
   final GetProgressBarPlayedPaint? getPlayedPaint;

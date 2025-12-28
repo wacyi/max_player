@@ -1,4 +1,4 @@
-part of 'max_getx_video_controller.dart';
+part of 'max_video_controller.dart';
 
 class _MaxGesturesController extends _MaxVideoQualityController {
   //double tap
@@ -57,23 +57,6 @@ class _MaxGesturesController extends _MaxVideoQualityController {
       }
       isShowOverlay(false);
     });
-  }
-
-  void onOverlayHover() {
-    if (kIsWeb) {
-      hoverOverlayTimer?.cancel();
-      isShowOverlay(true);
-      hoverOverlayTimer = Timer(
-        const Duration(seconds: 3),
-        () => isShowOverlay(false),
-      );
-    }
-  }
-
-  void onOverlayHoverExit() {
-    if (kIsWeb) {
-      isShowOverlay(false);
-    }
   }
 
   ///update doubletap durations

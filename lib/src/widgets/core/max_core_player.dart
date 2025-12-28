@@ -4,27 +4,27 @@ class _MaxCoreVideoPlayer extends StatelessWidget {
   final VideoPlayerController videoPlayerCtr;
   final double videoAspectRatio;
   final String tag;
+  final MaxVideoController controller;
 
   const _MaxCoreVideoPlayer({
     Key? key,
     required this.videoPlayerCtr,
     required this.videoAspectRatio,
     required this.tag,
+    required this.controller,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final _maxCtr = Get.find<MaxGetXVideoController>(tag: tag);
+    final maxCtr = controller;
     return Builder(
-      builder: (_ctrx) {
-        return RawKeyboardListener(
+      builder: (ctrx) {
+        return KeyboardListener(
           autofocus: true,
-          focusNode:
-              (_maxCtr.isFullScreen ? FocusNode() : _maxCtr.keyboardFocusWeb) ??
-                  FocusNode(),
-          onKey: (value) => _maxCtr.onKeyBoardEvents(
+          focusNode: FocusNode(),
+          onKeyEvent: (value) => maxCtr.onKeyBoardEvents(
             event: value,
-            appContext: _ctrx,
+            appContext: ctrx,
             tag: tag,
           ),
           child: Stack(
@@ -36,46 +36,40 @@ class _MaxCoreVideoPlayer extends StatelessWidget {
                   child: VideoPlayer(videoPlayerCtr),
                 ),
               ),
-              GetBuilder<MaxGetXVideoController>(
-                tag: tag,
-                id: 'maxVideoState',
-                builder: (_) => GetBuilder<MaxGetXVideoController>(
-                  tag: tag,
-                  id: 'video-progress',
-                  builder: (_maxCtr) {
-                    if (_maxCtr.videoThumbnail == null) {
-                      return const SizedBox();
-                    }
+              ListenableBuilder(
+                listenable: maxCtr,
+                builder: (context, _) {
+                  if (maxCtr.videoThumbnail == null) {
+                    return const SizedBox();
+                  }
 
-                    if (_maxCtr.maxVideoState == MaxVideoState.paused &&
-                        _maxCtr.videoPosition == Duration.zero) {
-                      return SizedBox.expand(
-                        child: TweenAnimationBuilder<double>(
-                          builder: (context, value, child) => Opacity(
-                            opacity: value,
-                            child: child,
-                          ),
-                          tween: Tween<double>(begin: 0.7, end: 1),
-                          duration: const Duration(milliseconds: 400),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              image: _maxCtr.videoThumbnail,
-                            ),
+                  if (maxCtr.maxVideoState == MaxVideoState.paused &&
+                      maxCtr.videoPosition == Duration.zero) {
+                    return SizedBox.expand(
+                      child: TweenAnimationBuilder<double>(
+                        builder: (context, value, child) => Opacity(
+                          opacity: value,
+                          child: child,
+                        ),
+                        tween: Tween<double>(begin: 0.7, end: 1),
+                        duration: const Duration(milliseconds: 400),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            image: maxCtr.videoThumbnail,
                           ),
                         ),
-                      );
-                    }
-                    return const SizedBox();
-                  },
-                ),
+                      ),
+                    );
+                  }
+                  return const SizedBox();
+                },
               ),
-              _VideoOverlays(tag: tag),
+              _VideoOverlays(tag: tag, controller: maxCtr),
               IgnorePointer(
-                child: GetBuilder<MaxGetXVideoController>(
-                  tag: tag,
-                  id: 'maxVideoState',
-                  builder: (_maxCtr) {
-                    final loadingWidget = _maxCtr.onLoading?.call(context) ??
+                child: ListenableBuilder(
+                  listenable: maxCtr,
+                  builder: (context, _) {
+                    final loadingWidget = maxCtr.onLoading?.call(context) ??
                         const Center(
                           child: CircularProgressIndicator(
                             backgroundColor: Colors.transparent,
@@ -84,69 +78,29 @@ class _MaxCoreVideoPlayer extends StatelessWidget {
                           ),
                         );
 
-                    if (kIsWeb) {
-                      switch (_maxCtr.maxVideoState) {
-                        case MaxVideoState.loading:
-                          return loadingWidget;
-                        case MaxVideoState.paused:
-                          return const Center(
-                            child: Icon(
-                              Icons.play_arrow,
-                              size: 45,
-                              color: Colors.white,
-                            ),
-                          );
-                        case MaxVideoState.playing:
-                          return Center(
-                            child: TweenAnimationBuilder<double>(
-                              builder: (context, value, child) => Opacity(
-                                opacity: value,
-                                child: child,
-                              ),
-                              tween: Tween<double>(begin: 1, end: 0),
-                              duration: const Duration(seconds: 1),
-                              child: const Icon(
-                                Icons.pause,
-                                size: 45,
-                                color: Colors.white,
-                              ),
-                            ),
-                          );
-                        case MaxVideoState.error:
-                          return const SizedBox();
-                      }
-                    } else {
-                      if (_maxCtr.maxVideoState == MaxVideoState.loading) {
-                        return loadingWidget;
-                      }
-                      return const SizedBox();
+                    if (maxCtr.maxVideoState == MaxVideoState.loading) {
+                      return loadingWidget;
                     }
+                    return const SizedBox();
                   },
                 ),
               ),
-              if (!kIsWeb)
-                GetBuilder<MaxGetXVideoController>(
-                  tag: tag,
-                  id: 'full-screen',
-                  builder: (_maxCtr) => _maxCtr.isFullScreen
-                      ? const SizedBox()
-                      : GetBuilder<MaxGetXVideoController>(
-                          tag: tag,
-                          id: 'overlay',
-                          builder: (_maxCtr) => _maxCtr.isOverlayVisible ||
-                                  !_maxCtr.alwaysShowProgressBar
-                              ? const SizedBox()
-                              : Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: MaxProgressBar(
-                                    tag: tag,
-                                    alignment: Alignment.bottomCenter,
-                                    maxProgressBarConfig:
-                                        _maxCtr.maxProgressBarConfig,
-                                  ),
-                                ),
-                        ),
-                ),
+              ListenableBuilder(
+                listenable: maxCtr,
+                builder: (context, _) => maxCtr.isFullScreen
+                    ? const SizedBox()
+                    : (maxCtr.isOverlayVisible || !maxCtr.alwaysShowProgressBar
+                        ? const SizedBox()
+                        : Align(
+                            alignment: Alignment.bottomCenter,
+                            child: MaxProgressBar(
+                              tag: tag,
+                              alignment: Alignment.bottomCenter,
+                              maxProgressBarConfig: maxCtr.maxProgressBarConfig,
+                              controller: maxCtr,
+                            ),
+                          )),
+              ),
             ],
           ),
         );

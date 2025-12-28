@@ -2,22 +2,25 @@ part of 'package:max_player/src/max_player.dart';
 
 class _MobileOverlay extends StatelessWidget {
   final String tag;
+  final MaxVideoController controller;
 
   const _MobileOverlay({
     Key? key,
     required this.tag,
+    required this.controller,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final maxCtr = controller;
     const overlayColor = Colors.black38;
-    const itemColor = Colors.white;
-    final _maxCtr = Get.find<MaxGetXVideoController>(tag: tag);
+    final itemColor = maxCtr.maxPlayerConfig.theme?.iconColor ?? Colors.white;
     return Stack(
       alignment: Alignment.center,
       children: [
         _VideoGestureDetector(
           tag: tag,
+          controller: maxCtr, // Pass controller
           child: ColoredBox(
             color: overlayColor,
             child: Row(
@@ -28,14 +31,18 @@ class _MobileOverlay extends StatelessWidget {
                     isForward: false,
                     height: double.maxFinite,
                     onDoubleTap: _isRtl()
-                        ? _maxCtr.onRightDoubleTap
-                        : _maxCtr.onLeftDoubleTap,
+                        ? maxCtr.onRightDoubleTap
+                        : maxCtr.onLeftDoubleTap,
+                    controller: maxCtr, // Pass controller
                   ),
                 ),
                 SizedBox(
                   height: double.infinity,
                   child: Center(
-                    child: _AnimatedPlayPauseIcon(tag: tag, size: 42),
+                    child: _AnimatedPlayPauseIcon(
+                        tag: tag,
+                        size: 42,
+                        controller: maxCtr), // Pass controller
                   ),
                 ),
                 Expanded(
@@ -44,8 +51,9 @@ class _MobileOverlay extends StatelessWidget {
                     tag: tag,
                     height: double.maxFinite,
                     onDoubleTap: _isRtl()
-                        ? _maxCtr.onLeftDoubleTap
-                        : _maxCtr.onRightDoubleTap,
+                        ? maxCtr.onLeftDoubleTap
+                        : maxCtr.onRightDoubleTap,
+                    controller: maxCtr, // Pass controller
                   ),
                 ),
               ],
@@ -59,17 +67,17 @@ class _MobileOverlay extends StatelessWidget {
             children: [
               Expanded(
                 child: IgnorePointer(
-                  child: _maxCtr.videoTitle ?? const SizedBox(),
+                  child: maxCtr.videoTitle ?? const SizedBox(),
                 ),
               ),
               MaterialIconButton(
-                toolTipMesg: _maxCtr.maxPlayerLabels.settings,
+                toolTipMesg: maxCtr.maxPlayerLabels.settings,
                 color: itemColor,
                 onPressed: () {
-                  if (_maxCtr.isOverlayVisible) {
+                  if (maxCtr.isOverlayVisible) {
                     _bottomSheet(context);
                   } else {
-                    _maxCtr.toggleVideoOverlay();
+                    maxCtr.toggleVideoOverlay();
                   }
                 },
                 child: const Icon(
@@ -81,7 +89,8 @@ class _MobileOverlay extends StatelessWidget {
         ),
         Align(
           alignment: Alignment.bottomLeft,
-          child: _MobileOverlayBottomControlles(tag: tag),
+          child: _MobileOverlayBottomControlles(
+              tag: tag, controller: maxCtr), // Pass controller
         ),
       ],
     );
@@ -108,7 +117,9 @@ class _MobileOverlay extends StatelessWidget {
   void _bottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(child: _MobileBottomSheet(tag: tag)),
+      builder: (context) => SafeArea(
+          child: _MobileBottomSheet(
+              tag: tag, controller: controller)), // Pass controller
     );
   }
 }

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get/get_state_manager/get_state_manager.dart';
-import 'package:get/instance_manager.dart';
 import 'package:video_player/video_player.dart';
 
-import '../controllers/max_getx_video_controller.dart';
+import '../controllers/max_video_controller.dart';
 import '../models/max_progress_bar_config.dart';
+import '../models/max_player_theme.dart';
 
 /// Renders progress bar for the video using custom paint.
 class MaxProgressBar extends StatefulWidget {
@@ -16,6 +15,7 @@ class MaxProgressBar extends StatefulWidget {
     this.onDragUpdate,
     this.alignment = Alignment.center,
     required this.tag,
+    required this.controller,
   })  : maxProgressBarConfig =
             maxProgressBarConfig ?? const MaxProgressBarConfig(),
         super(key: key);
@@ -26,14 +26,15 @@ class MaxProgressBar extends StatefulWidget {
   final Function()? onDragUpdate;
   final Alignment alignment;
   final String tag;
+  final MaxVideoController controller;
 
   @override
   State<MaxProgressBar> createState() => _MaxProgressBarState();
 }
 
 class _MaxProgressBarState extends State<MaxProgressBar> {
-  late final _maxCtr = Get.find<MaxGetXVideoController>(tag: widget.tag);
-  late VideoPlayerValue? videoPlayerValue = _maxCtr.videoCtr?.value;
+  late final maxCtr = widget.controller;
+  late VideoPlayerValue? videoPlayerValue = maxCtr.videoCtr?.value;
   bool _controllerWasPlaying = false;
 
   void seekToRelativePosition(Offset globalPosition) {
@@ -43,7 +44,7 @@ class _MaxProgressBarState extends State<MaxProgressBar> {
       final double relative = tapPos.dx / box.size.width;
       final Duration position =
           (videoPlayerValue?.duration ?? Duration.zero) * relative;
-      _maxCtr.seekTo(position);
+      maxCtr.seekTo(position);
     }
   }
 
@@ -51,11 +52,10 @@ class _MaxProgressBarState extends State<MaxProgressBar> {
   Widget build(BuildContext context) {
     if (videoPlayerValue == null) return const SizedBox();
 
-    return GetBuilder<MaxGetXVideoController>(
-      tag: widget.tag,
-      id: 'video-progress',
-      builder: (_maxCtr) {
-        videoPlayerValue = _maxCtr.videoCtr?.value;
+    return ListenableBuilder(
+      listenable: maxCtr,
+      builder: (context, _) {
+        videoPlayerValue = maxCtr.videoCtr?.value;
         return LayoutBuilder(
           builder: (context, size) {
             return GestureDetector(
@@ -66,9 +66,9 @@ class _MaxProgressBarState extends State<MaxProgressBar> {
                   return;
                 }
                 _controllerWasPlaying =
-                    _maxCtr.videoCtr?.value.isPlaying ?? false;
+                    maxCtr.videoCtr?.value.isPlaying ?? false;
                 if (_controllerWasPlaying) {
-                  _maxCtr.videoCtr?.pause();
+                  maxCtr.videoCtr?.pause();
                 }
 
                 if (widget.onDragStart != null) {
@@ -79,16 +79,16 @@ class _MaxProgressBarState extends State<MaxProgressBar> {
                 if (!videoPlayerValue!.isInitialized) {
                   return;
                 }
-                _maxCtr.isShowOverlay(true);
+                maxCtr.isShowOverlay(true);
                 seekToRelativePosition(details.globalPosition);
 
                 widget.onDragUpdate?.call();
               },
               onHorizontalDragEnd: (DragEndDetails details) {
                 if (_controllerWasPlaying) {
-                  _maxCtr.videoCtr?.play();
+                  maxCtr.videoCtr?.play();
                 }
-                _maxCtr.toggleVideoOverlay();
+                maxCtr.toggleVideoOverlay();
 
                 if (widget.onDragEnd != null) {
                   widget.onDragEnd?.call();
@@ -117,19 +117,19 @@ class _MaxProgressBarState extends State<MaxProgressBar> {
           height: widget.maxProgressBarConfig.circleHandlerRadius,
           child: Align(
             alignment: widget.alignment,
-            child: GetBuilder<MaxGetXVideoController>(
-              tag: widget.tag,
-              id: 'overlay',
-              builder: (_maxCtr) => CustomPaint(
+            child: ListenableBuilder(
+              listenable: maxCtr,
+              builder: (context, _) => CustomPaint(
                 painter: _ProgressBarPainter(
                   videoPlayerValue!,
                   maxProgressBarConfig: widget.maxProgressBarConfig.copyWith(
-                    circleHandlerRadius: _maxCtr.isOverlayVisible ||
+                    circleHandlerRadius: maxCtr.isOverlayVisible ||
                             widget
                                 .maxProgressBarConfig.alwaysVisibleCircleHandler
                         ? widget.maxProgressBarConfig.circleHandlerRadius
                         : 0,
                   ),
+                  theme: maxCtr.maxPlayerConfig.theme,
                 ),
                 size: Size(
                   double.maxFinite,
@@ -145,10 +145,11 @@ class _MaxProgressBarState extends State<MaxProgressBar> {
 }
 
 class _ProgressBarPainter extends CustomPainter {
-  _ProgressBarPainter(this.value, {this.maxProgressBarConfig});
+  _ProgressBarPainter(this.value, {this.maxProgressBarConfig, this.theme});
 
   VideoPlayerValue value;
   MaxProgressBarConfig? maxProgressBarConfig;
+  MaxPlayerTheme? theme;
 
   @override
   bool shouldRepaint(CustomPainter painter) {
@@ -162,15 +163,17 @@ class _ProgressBarPainter extends CustomPainter {
     final double curveRadius = maxProgressBarConfig!.curveRadius;
     final double circleHandlerRadius =
         maxProgressBarConfig!.circleHandlerRadius;
-    final Paint backgroundPaint =
-        maxProgressBarConfig!.getBackgroundPaint != null
-            ? maxProgressBarConfig!.getBackgroundPaint!(
-                width: width,
-                height: height,
-                circleHandlerRadius: circleHandlerRadius,
-              )
-            : Paint()
-          ..color = maxProgressBarConfig!.backgroundColor;
+    final Paint backgroundPaint = maxProgressBarConfig!.getBackgroundPaint !=
+            null
+        ? maxProgressBarConfig!.getBackgroundPaint!(
+            width: width,
+            height: height,
+            circleHandlerRadius: circleHandlerRadius,
+          )
+        : Paint()
+      ..color = maxProgressBarConfig!.backgroundColor ??
+          theme?.backgroundColor ??
+          const Color.fromRGBO(255, 255, 255, 0.24);
 
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -205,7 +208,9 @@ class _ProgressBarPainter extends CustomPainter {
               bufferedEnd: end,
             )
           : Paint()
-        ..color = maxProgressBarConfig!.bufferedBarColor;
+        ..color = maxProgressBarConfig!.bufferedBarColor ??
+            theme?.bufferedBarColor ??
+            const Color.fromRGBO(255, 255, 255, 0.38);
 
       canvas.drawRRect(
         RRect.fromRectAndRadius(
@@ -227,7 +232,9 @@ class _ProgressBarPainter extends CustomPainter {
             circleHandlerRadius: circleHandlerRadius,
           )
         : Paint()
-      ..color = maxProgressBarConfig!.playingBarColor;
+      ..color = maxProgressBarConfig!.playingBarColor ??
+          theme?.playingBarColor ??
+          Colors.red;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromPoints(
@@ -239,16 +246,18 @@ class _ProgressBarPainter extends CustomPainter {
       playedPaint,
     );
 
-    final Paint handlePaint =
-        maxProgressBarConfig!.getCircleHandlerPaint != null
-            ? maxProgressBarConfig!.getCircleHandlerPaint!(
-                width: width,
-                height: height,
-                playedPart: playedPart,
-                circleHandlerRadius: circleHandlerRadius,
-              )
-            : Paint()
-          ..color = maxProgressBarConfig!.circleHandlerColor;
+    final Paint handlePaint = maxProgressBarConfig!.getCircleHandlerPaint !=
+            null
+        ? maxProgressBarConfig!.getCircleHandlerPaint!(
+            width: width,
+            height: height,
+            playedPart: playedPart,
+            circleHandlerRadius: circleHandlerRadius,
+          )
+        : Paint()
+      ..color = maxProgressBarConfig!.circleHandlerColor ??
+          theme?.circleHandlerColor ??
+          Colors.red;
 
     canvas.drawCircle(
       Offset(playedPart, height / 2),
