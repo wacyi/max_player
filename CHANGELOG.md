@@ -1,3 +1,9 @@
+## 2.0.1
+
+- **Fix**: Resolved `Null check operator used on a null value` in `MaxPlayerController`.
+- **Feature**: Added comprehensive `example` project.
+- **Fix**: Exported `MaxPlayerTheme` and fixed `SystemUiMode` usage in example.
+
 # 1.1.1
 
 - Version 1.1.1 of max_player package.

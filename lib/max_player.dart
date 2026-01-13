@@ -11,4 +11,5 @@ export 'src/models/max_progress_bar_config.dart';
 export 'src/models/vimeo_models.dart';
 export 'src/max_player.dart';
 export 'src/utils/enums.dart';
+export 'src/models/max_player_theme.dart';
 export 'src/widgets/max_progress_bar.dart';
