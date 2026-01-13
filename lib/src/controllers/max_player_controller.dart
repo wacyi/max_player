@@ -70,14 +70,15 @@ class MaxPlayerController {
     }
 
     /// If a wrong video is passed to the player, it'll never being loaded.
-    if (_initializationError != null) {
-      if (_initializationError! is Exception) {
-        throw _initializationError! as Exception;
+    final error = _initializationError;
+    if (error != null) {
+      if (error is Exception) {
+        throw error;
       }
-      if (_initializationError! is Error) {
-        throw _initializationError! as Error;
+      if (error is Error) {
+        throw error;
       }
-      throw Exception(_initializationError.toString());
+      throw Exception(error.toString());
     }
 
     await Future.delayed(const Duration(milliseconds: 500));
