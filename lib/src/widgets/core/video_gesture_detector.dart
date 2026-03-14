@@ -1,16 +1,15 @@
 part of 'package:max_player/src/max_player.dart';
 
 class _VideoGestureDetector extends StatelessWidget {
+  const _VideoGestureDetector({
+    required this.tag,
+    required this.controller,
+    this.child,
+  });
+
   final Widget? child;
   final String tag;
   final MaxVideoController controller;
-
-  const _VideoGestureDetector({
-    Key? key,
-    this.child,
-    required this.tag,
-    required this.controller,
-  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

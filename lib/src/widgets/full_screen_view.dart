@@ -1,22 +1,25 @@
 part of 'package:max_player/src/max_player.dart';
 
 class FullScreenView extends StatefulWidget {
+  const FullScreenView({
+    required this.tag,
+    required this.controller,
+    super.key,
+  });
+
   final String tag;
   final MaxVideoController controller;
 
-  const FullScreenView({
-    Key? key,
-    required this.tag,
-    required this.controller,
-  }) : super(key: key);
-
   @override
-  State<FullScreenView> createState() => _FullScreenViewState();
+  State<FullScreenView> createState() =>
+      _FullScreenViewState();
 }
 
-class _FullScreenViewState extends State<FullScreenView>
+class _FullScreenViewState
+    extends State<FullScreenView>
     with TickerProviderStateMixin {
   late MaxVideoController maxCtr;
+
   @override
   void initState() {
     maxCtr = widget.controller;
@@ -27,40 +30,60 @@ class _FullScreenViewState extends State<FullScreenView>
   @override
   Widget build(BuildContext context) {
     final theme = maxCtr.maxPlayerConfig.theme;
-    final loadingWidget = maxCtr.onLoading?.call(context) ??
-        CircularProgressIndicator(
-          backgroundColor: theme?.backgroundColor ?? Colors.black87,
-          color: theme?.iconColor ?? Colors.white,
-          strokeWidth: 2,
-        );
+    final loadingWidget =
+        maxCtr.onLoading?.call(context) ??
+            CircularProgressIndicator(
+              backgroundColor:
+                  theme?.backgroundColor ??
+                      Colors.black87,
+              color: theme?.iconColor ??
+                  Colors.white,
+              strokeWidth: 2,
+            );
 
     return PopScope(
-      canPop: false, // Prevent default pop to allow async cleanup
-      onPopInvokedWithResult: (didPop, result) async {
+      canPop: false,
+      onPopInvokedWithResult:
+          (didPop, result) async {
         if (didPop) return;
-        // Trigger disableFullScreen which handles orientation and then pops
-        await maxCtr.disableFullScreen(context, widget.tag);
+        await maxCtr.disableFullScreen(
+          context,
+          widget.tag,
+        );
       },
       child: Scaffold(
-        backgroundColor: theme?.backgroundColor ?? Colors.black,
+        backgroundColor:
+            theme?.backgroundColor ??
+                Colors.black,
         body: ListenableBuilder(
           listenable: maxCtr,
           builder: (context, _) => Center(
             child: ColoredBox(
-              color: theme?.backgroundColor ?? Colors.black,
+              color: theme?.backgroundColor ??
+                  Colors.black,
               child: SizedBox(
-                height: MediaQuery.of(context).size.height,
-                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context)
+                    .size
+                    .height,
+                width: MediaQuery.of(context)
+                    .size
+                    .width,
                 child: Center(
                   child: maxCtr.videoCtr == null
                       ? loadingWidget
-                      : maxCtr.videoCtr!.value.isInitialized
+                      : maxCtr.videoCtr!.value
+                              .isInitialized
                           ? _MaxCoreVideoPlayer(
                               tag: widget.tag,
-                              videoPlayerCtr: maxCtr.videoCtr!,
-                              videoAspectRatio:
-                                  maxCtr.videoCtr?.value.aspectRatio ?? 16 / 9,
-                              controller: maxCtr, // Pass controller
+                              videoPlayerCtr:
+                                  maxCtr
+                                      .videoCtr!,
+                              videoAspectRatio: maxCtr
+                                      .videoCtr
+                                      ?.value
+                                      .aspectRatio ??
+                                  16 / 9,
+                              controller: maxCtr,
                             )
                           : loadingWidget,
                 ),

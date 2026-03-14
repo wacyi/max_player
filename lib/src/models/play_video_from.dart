@@ -1,23 +1,12 @@
-import '../../max_player.dart';
+import 'package:max_player/max_player.dart';
 
+/// Defines the video source to play.
 class PlayVideoFrom {
-  final String? dataSource;
-  final String? hash;
-  final MaxVideoPlayerType playerType;
-  final VideoFormat? formatHint;
-  final String? package;
-  final dynamic file;
-  final List<VideoQalityUrls>? videoQualityUrls;
-  final Future<ClosedCaptionFile>? closedCaptionFile;
-  final VideoPlayerOptions? videoPlayerOptions;
-  final Map<String, String> httpHeaders;
-  final bool live;
-
   const PlayVideoFrom._({
+    required this.playerType,
     this.live = false,
     this.dataSource,
     this.hash,
-    required this.playerType,
     this.formatHint,
     this.package,
     this.file,
@@ -27,6 +16,7 @@ class PlayVideoFrom {
     this.httpHeaders = const {},
   });
 
+  /// Play from a network URL.
   factory PlayVideoFrom.network(
     String dataSource, {
     VideoFormat? formatHint,
@@ -44,6 +34,7 @@ class PlayVideoFrom {
     );
   }
 
+  /// Play from a Flutter asset.
   factory PlayVideoFrom.asset(
     String dataSource, {
     String? package,
@@ -59,8 +50,9 @@ class PlayVideoFrom {
     );
   }
 
-  ///File Doesnot support web apps
-  ///[file] is `File` Datatype import it from `dart:io`
+  /// Play from a local file.
+  ///
+  /// [file] is a `File` from `dart:io`.
   factory PlayVideoFrom.file(
     dynamic file, {
     Future<ClosedCaptionFile>? closedCaptionFile,
@@ -74,6 +66,7 @@ class PlayVideoFrom {
     );
   }
 
+  /// Play from a Vimeo video.
   factory PlayVideoFrom.vimeo(
     String dataSource, {
     String? hash,
@@ -93,6 +86,7 @@ class PlayVideoFrom {
     );
   }
 
+  /// Play from a private Vimeo video.
   factory PlayVideoFrom.vimeoPrivateVideos(
     String dataSource, {
     VideoFormat? formatHint,
@@ -109,6 +103,8 @@ class PlayVideoFrom {
       httpHeaders: httpHeaders,
     );
   }
+
+  /// Play from a YouTube video.
   factory PlayVideoFrom.youtube(
     String dataSource, {
     bool live = false,
@@ -127,6 +123,8 @@ class PlayVideoFrom {
       httpHeaders: httpHeaders,
     );
   }
+
+  /// Play from multiple quality URLs.
   factory PlayVideoFrom.networkQualityUrls({
     required List<VideoQalityUrls> videoUrls,
     VideoFormat? formatHint,
@@ -143,4 +141,16 @@ class PlayVideoFrom {
       httpHeaders: httpHeaders,
     );
   }
+
+  final String? dataSource;
+  final String? hash;
+  final MaxVideoPlayerType playerType;
+  final VideoFormat? formatHint;
+  final String? package;
+  final dynamic file;
+  final List<VideoQalityUrls>? videoQualityUrls;
+  final Future<ClosedCaptionFile>? closedCaptionFile;
+  final VideoPlayerOptions? videoPlayerOptions;
+  final Map<String, String> httpHeaders;
+  final bool live;
 }

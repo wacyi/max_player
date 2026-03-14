@@ -57,7 +57,8 @@ class MaxProgressBarConfig {
 
   final bool alwaysVisibleCircleHandler;
 
-  /// Color for background area, not applied if [getBackgroundPaint] is provided.
+  /// Color for background area, not applied
+  /// if [getBackgroundPaint] is provided.
   final Color? backgroundColor;
 
   /// Paint for played area.

@@ -129,7 +129,7 @@ class _MaxVideoQualityController extends _MaxVideoController {
       _videoDuration = _videoCtr?.value.duration ?? Duration.zero;
       _videoCtr?.addListener(videoListner);
       await _videoCtr?.seekTo(_videoPosition);
-      setVideoPlayBack(_currentPaybackSpeed);
+      await setVideoPlayBack('${_currentPlaybackSpeed}x');
       maxVideoStateChanger(MaxVideoState.playing);
       onVimeoVideoQualityChanged?.call();
       update();

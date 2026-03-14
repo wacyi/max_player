@@ -1,43 +1,49 @@
 import 'dart:async';
-
-import 'package:flutter/cupertino.dart';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:max_player/max_player.dart';
+import 'package:max_player/src/utils/logger.dart';
+import 'package:max_player/src/utils/video_apis.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../../max_player.dart';
-import '../utils/logger.dart';
-import '../utils/video_apis.dart';
-
 part 'max_base_controller.dart';
+part 'max_control_controller.dart';
 part 'max_gestures_controller.dart';
 part 'max_ui_controller.dart';
-part 'max_control_controller.dart';
 part 'max_video_quality_controller.dart';
 
+/// Internal video controller managing playback, state, and gestures.
 class MaxVideoController extends _MaxGesturesController {
-  ///main videoplayer controller
+  /// The underlying [VideoPlayerController].
   VideoPlayerController? get videoCtr => _videoCtr;
 
-  ///maxVideoPlayer state notifier
+  /// The current [MaxVideoState].
   MaxVideoState get maxVideoState => _maxVideoState;
 
-  ///vimeo or general --video player type
+  /// The type of video source.
   MaxVideoPlayerType get videoPlayerType => _videoPlayerType;
 
-  String get currentPaybackSpeed => _currentPaybackSpeed;
+  /// The current playback speed as a formatted string (legacy).
+  String get currentPaybackSpeed => '${_currentPlaybackSpeed}x';
 
-  ///
+  /// The current [Duration] of the video.
   Duration get videoDuration => _videoDuration;
 
-  ///
+  /// The current playback position.
   Duration get videoPosition => _videoPosition;
 
+  /// Whether the controller has been initialized.
   bool controllerInitialized = false;
+
+  /// The player configuration.
   late MaxPlayerConfig maxPlayerConfig;
+
+  /// The video source configuration.
   late PlayVideoFrom playVideoFrom;
+
+  /// Configure the controller with the given source and config.
   void config({
     required PlayVideoFrom playVideoFrom,
     required MaxPlayerConfig playerConfig,
@@ -49,76 +55,95 @@ class MaxVideoController extends _MaxGesturesController {
     isLooping = playerConfig.isLooping;
   }
 
-  ///*init
+  /// Initialize the video player.
   Future<void> videoInit() async {
-    ///
-    // checkPlayerType();
     maxLog(_videoPlayerType.toString());
     try {
+      if (!_statusStreamController.isClosed) {
+        _statusStreamController.add(MaxPlayerStatus.initializing);
+      }
+      _currentStatus = MaxPlayerStatus.initializing;
+
       await _initializePlayer();
       await _videoCtr?.initialize();
       _videoDuration = _videoCtr?.value.duration ?? Duration.zero;
-      await setLooping(isLooping);
+      await setLooping(isLooped: isLooping);
       _videoCtr?.addListener(videoListner);
-      // Replaced addListenerId with addListener.
-      // maxVideoState changes will trigger notifyListeners(), so we just listen generally.
-      // However, we need to ensure maxStateListner execution context.
-      // Since maxVideoStateChanger calls update which calls notifyListeners,
-      // and maxStateListner logic depends on _maxVideoState, we can call it directly inside maxVideoStateChanger?
-      // Or just add it as a listener.
-      // ISSUE: calling maxStateListner here adds it to general listeners,
-      // but maxStateListner might trigger logic that shouldn't run on EVERY update.
-      // BUT MaxVideoState only changes rarely.
-      // Let's hook it differently: override maxVideoStateChanger.
 
-      // For now, attaching it as a general listener, but ensuring it's robust.
-      // Actually, maxVideoStateChanger logic calls update.
-      // The original code listed to 'maxVideoState'.
-      // I will override maxVideoStateChanger in this class to call maxStateListner directly too?
-      // No, let's keep it simple. addListener(maxStateListner) means it runs on ANY update.
-      // That might be too much.
-      // Better approach: In maxVideoStateChanger (which is in base), we can't easily hook.
-      // I will rely on the fact that maxStateListner does a switch on _maxVideoState.
-      // If the state hasn't effectively changed to something new that needs action...
-      // Original code only fired 'update' on state change.
-
-      // I will remove the listener approach and instead call `maxStateListner` manually
-      // whenever `maxVideoStateChanger` changes the state.
-      // But `maxVideoStateChanger` is in the base class.
-      // I'll override `maxVideoStateChanger`.
-
-      // addListener(maxStateListner); // This would run on video position updates too! BAD.
+      // Start position stream.
+      _startPositionStream(maxPlayerConfig.positionStreamInterval);
 
       checkAutoPlayVideo();
       controllerInitialized = true;
-      notifyListeners(); // Replced update()
+      notifyListeners();
 
       update(['update-all']);
-      // ignore: unawaited_futures
-      Future.delayed(const Duration(milliseconds: 600));
     } catch (e) {
       maxVideoStateChanger(MaxVideoState.error);
       update(['errorState']);
       update(['update-all']);
       maxLog('ERROR ON max_PLAYER:  $e');
+
+      emitError(
+        MaxPlayerError(
+          type: _classifyError(e),
+          message: e.toString(),
+          exception: e,
+        ),
+      );
+
       rethrow;
     }
+  }
+
+  MaxPlayerErrorType _classifyError(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('socket') ||
+        message.contains('network') ||
+        message.contains('connection')) {
+      return MaxPlayerErrorType.network;
+    }
+    if (message.contains('format') || message.contains('codec')) {
+      return MaxPlayerErrorType.format;
+    }
+    if (message.contains('not found') ||
+        message.contains('404') ||
+        message.contains('source')) {
+      return MaxPlayerErrorType.source;
+    }
+    return MaxPlayerErrorType.unknown;
   }
 
   @override
   void maxVideoStateChanger(MaxVideoState? val, {bool updateUi = true}) {
     super.maxVideoStateChanger(val, updateUi: updateUi);
-    // Call listener logic when state changes
     if (val != null) {
       maxStateListner();
     }
   }
 
+  @override
+  void _startBufferingTimeout() {
+    _cancelBufferingTimeout();
+    _bufferingTimeoutTimer = Timer(
+      maxPlayerConfig.bufferingTimeoutDuration,
+      () {
+        if (isBuffering) {
+          emitError(
+            MaxPlayerError(
+              type: MaxPlayerErrorType.timeout,
+              message: maxPlayerLabels.bufferingTimeout,
+            ),
+          );
+          maxVideoStateChanger(MaxVideoState.error);
+        }
+      },
+    );
+  }
+
   Future<void> _initializePlayer() async {
     switch (_videoPlayerType) {
       case MaxVideoPlayerType.network:
-
-        ///
         _videoCtr = VideoPlayerController.networkUrl(
           Uri.parse(playVideoFrom.dataSource!),
           closedCaptionFile: playVideoFrom.closedCaptionFile,
@@ -127,14 +152,11 @@ class MaxVideoController extends _MaxGesturesController {
           httpHeaders: playVideoFrom.httpHeaders,
         );
         playingVideoUrl = playVideoFrom.dataSource;
-        break;
       case MaxVideoPlayerType.networkQualityUrls:
         final url = await getUrlFromVideoQualityUrls(
           qualityList: maxPlayerConfig.videoQualityPriority,
           videoUrls: playVideoFrom.videoQualityUrls!,
         );
-
-        ///
         _videoCtr = VideoPlayerController.networkUrl(
           Uri.parse(url),
           closedCaptionFile: playVideoFrom.closedCaptionFile,
@@ -143,8 +165,6 @@ class MaxVideoController extends _MaxGesturesController {
           httpHeaders: playVideoFrom.httpHeaders,
         );
         playingVideoUrl = url;
-
-        break;
       case MaxVideoPlayerType.youtube:
         final urls = await getVideoQualityUrlsFromYoutube(
           playVideoFrom.dataSource!,
@@ -154,8 +174,6 @@ class MaxVideoController extends _MaxGesturesController {
           qualityList: maxPlayerConfig.videoQualityPriority,
           videoUrls: urls,
         );
-
-        ///
         _videoCtr = VideoPlayerController.networkUrl(
           Uri.parse(url),
           closedCaptionFile: playVideoFrom.closedCaptionFile,
@@ -164,8 +182,6 @@ class MaxVideoController extends _MaxGesturesController {
           httpHeaders: playVideoFrom.httpHeaders,
         );
         playingVideoUrl = url;
-
-        break;
       case MaxVideoPlayerType.vimeo:
         await getQualityUrlsFromVimeoId(
           playVideoFrom.dataSource!,
@@ -175,7 +191,6 @@ class MaxVideoController extends _MaxGesturesController {
           qualityList: maxPlayerConfig.videoQualityPriority,
           videoUrls: vimeoOrVideoUrls,
         );
-
         _videoCtr = VideoPlayerController.networkUrl(
           Uri.parse(url),
           closedCaptionFile: playVideoFrom.closedCaptionFile,
@@ -184,11 +199,7 @@ class MaxVideoController extends _MaxGesturesController {
           httpHeaders: playVideoFrom.httpHeaders,
         );
         playingVideoUrl = url;
-
-        break;
       case MaxVideoPlayerType.asset:
-
-        ///
         _videoCtr = VideoPlayerController.asset(
           playVideoFrom.dataSource!,
           closedCaptionFile: playVideoFrom.closedCaptionFile,
@@ -196,18 +207,12 @@ class MaxVideoController extends _MaxGesturesController {
           videoPlayerOptions: playVideoFrom.videoPlayerOptions,
         );
         playingVideoUrl = playVideoFrom.dataSource;
-
-        break;
       case MaxVideoPlayerType.file:
-
-        ///
         _videoCtr = VideoPlayerController.file(
-          playVideoFrom.file!,
+          playVideoFrom.file! as File,
           closedCaptionFile: playVideoFrom.closedCaptionFile,
           videoPlayerOptions: playVideoFrom.videoPlayerOptions,
         );
-
-        break;
       case MaxVideoPlayerType.vimeoPrivateVideos:
         await getQualityUrlsFromVimeoPrivateId(
           playVideoFrom.dataSource!,
@@ -217,7 +222,6 @@ class MaxVideoController extends _MaxGesturesController {
           qualityList: maxPlayerConfig.videoQualityPriority,
           videoUrls: vimeoOrVideoUrls,
         );
-
         _videoCtr = VideoPlayerController.networkUrl(
           Uri.parse(url),
           closedCaptionFile: playVideoFrom.closedCaptionFile,
@@ -226,41 +230,35 @@ class MaxVideoController extends _MaxGesturesController {
           httpHeaders: playVideoFrom.httpHeaders,
         );
         playingVideoUrl = url;
-
-        break;
     }
   }
 
-  ///Listning on keyboard events
+  /// Handle keyboard events.
   void onKeyBoardEvents({
     required KeyEvent event,
     required BuildContext appContext,
     required String tag,
   }) {}
 
-  ///this func will listne to update id `_maxVideoState`
+  /// Listen to video state changes and act accordingly.
   void maxStateListner() {
     maxLog(_maxVideoState.toString());
     switch (_maxVideoState) {
       case MaxVideoState.playing:
-        if (maxPlayerConfig.wakelockEnabled) WakelockPlus.enable();
-        playVideo(true);
-        break;
+        if (maxPlayerConfig.wakelockEnabled) unawaited(WakelockPlus.enable());
+        unawaited(playVideo(play: true));
       case MaxVideoState.paused:
-        if (maxPlayerConfig.wakelockEnabled) WakelockPlus.disable();
-        playVideo(false);
-        break;
+        if (maxPlayerConfig.wakelockEnabled) unawaited(WakelockPlus.disable());
+        unawaited(playVideo(play: false));
       case MaxVideoState.loading:
         isShowOverlay(true);
-        break;
       case MaxVideoState.error:
-        if (maxPlayerConfig.wakelockEnabled) WakelockPlus.disable();
-        playVideo(false);
-        break;
+        if (maxPlayerConfig.wakelockEnabled) unawaited(WakelockPlus.disable());
+        unawaited(playVideo(play: false));
     }
   }
 
-  ///checkes wether video should be `autoplayed` initially
+  /// Check whether video should be auto-played initially.
   void checkAutoPlayVideo() {
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
       if (autoPlay && (isVideoUiBinded ?? false)) {
@@ -271,6 +269,7 @@ class MaxVideoController extends _MaxGesturesController {
     });
   }
 
+  /// Change the current video source.
   Future<void> changeVideo({
     required PlayVideoFrom playVideoFrom,
     required MaxPlayerConfig playerConfig,
@@ -281,5 +280,22 @@ class MaxVideoController extends _MaxGesturesController {
     vimeoOrVideoUrls = [];
     config(playVideoFrom: playVideoFrom, playerConfig: playerConfig);
     await videoInit();
+  }
+
+  /// Retry loading the current video source after an error.
+  Future<void> retry() async {
+    maxVideoStateChanger(MaxVideoState.loading);
+    _videoCtr?.removeListener(videoListner);
+    await _videoCtr?.dispose();
+    _videoCtr = null;
+    controllerInitialized = false;
+    update(['update-all']);
+    await videoInit();
+  }
+
+  @override
+  void dispose() {
+    _disposeStreams();
+    super.dispose();
   }
 }

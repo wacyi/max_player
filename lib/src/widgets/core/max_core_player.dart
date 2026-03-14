@@ -1,18 +1,17 @@
 part of 'package:max_player/src/max_player.dart';
 
 class _MaxCoreVideoPlayer extends StatelessWidget {
-  final VideoPlayerController videoPlayerCtr;
-  final double videoAspectRatio;
-  final String tag;
-  final MaxVideoController controller;
-
   const _MaxCoreVideoPlayer({
-    Key? key,
     required this.videoPlayerCtr,
     required this.videoAspectRatio,
     required this.tag,
     required this.controller,
-  }) : super(key: key);
+  });
+
+  final VideoPlayerController videoPlayerCtr;
+  final double videoAspectRatio;
+  final String tag;
+  final MaxVideoController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +21,8 @@ class _MaxCoreVideoPlayer extends StatelessWidget {
         return KeyboardListener(
           autofocus: true,
           focusNode: FocusNode(),
-          onKeyEvent: (value) => maxCtr.onKeyBoardEvents(
+          onKeyEvent: (value) =>
+              maxCtr.onKeyBoardEvents(
             event: value,
             appContext: ctrx,
             tag: tag,
@@ -33,29 +33,49 @@ class _MaxCoreVideoPlayer extends StatelessWidget {
               Center(
                 child: AspectRatio(
                   aspectRatio: videoAspectRatio,
-                  child: VideoPlayer(videoPlayerCtr),
+                  child: VideoPlayer(
+                    videoPlayerCtr,
+                  ),
                 ),
               ),
               ListenableBuilder(
                 listenable: maxCtr,
                 builder: (context, _) {
-                  if (maxCtr.videoThumbnail == null) {
+                  if (maxCtr.videoThumbnail ==
+                      null) {
                     return const SizedBox();
                   }
 
-                  if (maxCtr.maxVideoState == MaxVideoState.paused &&
-                      maxCtr.videoPosition == Duration.zero) {
+                  if (maxCtr.maxVideoState ==
+                          MaxVideoState.paused &&
+                      maxCtr.videoPosition ==
+                          Duration.zero) {
                     return SizedBox.expand(
-                      child: TweenAnimationBuilder<double>(
-                        builder: (context, value, child) => Opacity(
-                          opacity: value,
-                          child: child,
+                      child:
+                          TweenAnimationBuilder<
+                            double
+                          >(
+                        builder:
+                            (
+                              context,
+                              value,
+                              child,
+                            ) => Opacity(
+                              opacity: value,
+                              child: child,
+                            ),
+                        tween: Tween<double>(
+                          begin: 0.7,
+                          end: 1,
                         ),
-                        tween: Tween<double>(begin: 0.7, end: 1),
-                        duration: const Duration(milliseconds: 400),
+                        duration: const Duration(
+                          milliseconds: 400,
+                        ),
                         child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            image: maxCtr.videoThumbnail,
+                          decoration:
+                              BoxDecoration(
+                            image: maxCtr
+                                .videoThumbnail,
                           ),
                         ),
                       ),
@@ -64,21 +84,30 @@ class _MaxCoreVideoPlayer extends StatelessWidget {
                   return const SizedBox();
                 },
               ),
-              _VideoOverlays(tag: tag, controller: maxCtr),
+              _VideoOverlays(
+                tag: tag,
+                controller: maxCtr,
+              ),
               IgnorePointer(
                 child: ListenableBuilder(
                   listenable: maxCtr,
                   builder: (context, _) {
-                    final loadingWidget = maxCtr.onLoading?.call(context) ??
+                    final loadingWidget = maxCtr
+                            .onLoading
+                            ?.call(context) ??
                         const Center(
-                          child: CircularProgressIndicator(
-                            backgroundColor: Colors.transparent,
+                          child:
+                              CircularProgressIndicator(
+                            backgroundColor:
+                                Colors
+                                    .transparent,
                             color: Colors.white,
                             strokeWidth: 2,
                           ),
                         );
 
-                    if (maxCtr.maxVideoState == MaxVideoState.loading) {
+                    if (maxCtr.maxVideoState ==
+                        MaxVideoState.loading) {
                       return loadingWidget;
                     }
                     return const SizedBox();
@@ -87,19 +116,29 @@ class _MaxCoreVideoPlayer extends StatelessWidget {
               ),
               ListenableBuilder(
                 listenable: maxCtr,
-                builder: (context, _) => maxCtr.isFullScreen
-                    ? const SizedBox()
-                    : (maxCtr.isOverlayVisible || !maxCtr.alwaysShowProgressBar
+                builder: (context, _) =>
+                    maxCtr.isFullScreen
                         ? const SizedBox()
-                        : Align(
-                            alignment: Alignment.bottomCenter,
-                            child: MaxProgressBar(
-                              tag: tag,
-                              alignment: Alignment.bottomCenter,
-                              maxProgressBarConfig: maxCtr.maxProgressBarConfig,
-                              controller: maxCtr,
-                            ),
-                          )),
+                        : (maxCtr
+                                    .isOverlayVisible ||
+                                !maxCtr
+                                    .alwaysShowProgressBar
+                            ? const SizedBox()
+                            : Align(
+                                alignment: Alignment
+                                    .bottomCenter,
+                                child:
+                                    MaxProgressBar(
+                                  tag: tag,
+                                  alignment: Alignment
+                                      .bottomCenter,
+                                  maxProgressBarConfig:
+                                      maxCtr
+                                          .maxProgressBarConfig,
+                                  controller:
+                                      maxCtr,
+                                ),
+                              )),
               ),
             ],
           ),

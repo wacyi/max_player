@@ -1,38 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 class DoubleTapRippleEffect extends StatefulWidget {
-  /// child widget [child]
-  final Widget? child;
-
-  /// Helps to wrap child widget inside a parent widget
-  final Widget Function(Widget parentWidget, double curveRadius)? wrapper;
-
-  /// touch effect color of widget [rippleColor]
-  final Color? rippleColor;
-
-  /// TouchRippleEffect widget background color [backgroundColor]
-  final Color? backgroundColor;
-
-  /// if you have border of child widget then you should apply [borderRadius]
-  final BorderRadius? borderRadius;
-
-  /// animation duration of touch effect. [rippleDuration]
-  final Duration? rippleDuration;
-
-  /// duration to stay the frame. [rippleEndingDuraiton]
-  final Duration? rippleEndingDuraiton;
-
-  /// user click or tap handle [onDoubleTap].
-  final void Function()? onDoubleTap;
-
-  /// TouchRippleEffect widget width size [width]
-  final double? width;
-
-  /// TouchRippleEffect widget height size [height]
-  final double? height;
-
   const DoubleTapRippleEffect({
-    Key? key,
+    super.key,
     this.child,
     this.wrapper,
     this.rippleColor,
@@ -43,13 +15,49 @@ class DoubleTapRippleEffect extends StatefulWidget {
     this.onDoubleTap,
     this.width,
     this.height,
-  }) : super(key: key);
+  });
+
+  /// child widget [child]
+  final Widget? child;
+
+  /// Helps to wrap child widget inside a parent widget
+  final Widget Function(
+    Widget parentWidget,
+    double curveRadius,
+  )? wrapper;
+
+  /// touch effect color of widget [rippleColor]
+  final Color? rippleColor;
+
+  /// TouchRippleEffect widget background color [backgroundColor]
+  final Color? backgroundColor;
+
+  /// if you have border of child widget then you should
+  /// apply [borderRadius]
+  final BorderRadius? borderRadius;
+
+  /// animation duration of touch effect. [rippleDuration]
+  final Duration? rippleDuration;
+
+  /// duration to stay the frame. [rippleEndingDuraiton]
+  final Duration? rippleEndingDuraiton;
+
+  /// user click or tap handle [onDoubleTap].
+  final VoidCallback? onDoubleTap;
+
+  /// TouchRippleEffect widget width size [width]
+  final double? width;
+
+  /// TouchRippleEffect widget height size [height]
+  final double? height;
 
   @override
-  State<DoubleTapRippleEffect> createState() => _DoubleTapRippleEffectState();
+  State<DoubleTapRippleEffect> createState() =>
+      _DoubleTapRippleEffectState();
 }
 
-class _DoubleTapRippleEffectState extends State<DoubleTapRippleEffect>
+class _DoubleTapRippleEffectState
+    extends State<DoubleTapRippleEffect>
     with SingleTickerProviderStateMixin {
   // by default offset will be 0,0
   // it will be set when user tap on widget
@@ -85,17 +93,16 @@ class _DoubleTapRippleEffectState extends State<DoubleTapRippleEffect>
     // animation controller initialized
     _animationController = AnimationController(
       vsync: this,
-      duration: widget.rippleDuration ?? const Duration(milliseconds: 300),
+      duration: widget.rippleDuration ??
+          const Duration(milliseconds: 300),
     );
-    // animation controller listener added or iitialized
+    // animation controller listener added
     _animationController.addListener(_update);
   }
 
   // update animation when started
-
   void _update() {
     setState(() {
-      // [_anim.value] setting to [_animRadiusValue] global variable
       _animRadiusValue = _anim.value;
     });
     // animation status function calling
@@ -105,21 +112,21 @@ class _DoubleTapRippleEffectState extends State<DoubleTapRippleEffect>
   // checking animation status is completed
   void _animStatus() {
     if (_anim.status == AnimationStatus.completed) {
-      Future.delayed(
-        widget.rippleEndingDuraiton ?? const Duration(milliseconds: 600),
+      unawaited(Future<void>.delayed(
+        widget.rippleEndingDuraiton ??
+            const Duration(milliseconds: 600),
       ).then((value) {
         setState(() {
           _animRadiusValue = 0;
         });
         // stoping animation after completed
         _animationController.stop();
-      });
+      }),);
     }
   }
 
   @override
   void dispose() {
-    // disposing [_animationController] when parent exist of close
     _animationController.dispose();
     super.dispose();
   }
@@ -128,23 +135,20 @@ class _DoubleTapRippleEffectState extends State<DoubleTapRippleEffect>
   void _animate() {
     final width = widget.width ?? _mWidth;
     final height = widget.height ?? _mHeight;
-    // [Tween] animation initialize to global variable
-    _tweenAnim = Tween(begin: 0, end: (width + height) / 1.5);
-
-    // adding [_animationController] to [_tweenanim] to animate
+    _tweenAnim =
+        Tween(begin: 0, end: (width + height) / 1.5);
     _anim = _tweenAnim.animate(_animationController);
 
-    _animationController
-      // resetting [_animationController] before start
-      ..reset()
-      // starting [_animationController] to start animation
-      ..forward();
+    _animationController.reset();
+    unawaited(_animationController.forward());
   }
 
   @override
   Widget build(BuildContext context) {
     final curveRadius = (_mWidth + _mHeight) / 2;
-    if (widget.wrapper != null) return widget.wrapper!(_builder(), curveRadius);
+    if (widget.wrapper != null) {
+      return widget.wrapper!(_builder(), curveRadius);
+    }
     return _builder();
   }
 
@@ -155,17 +159,14 @@ class _DoubleTapRippleEffectState extends State<DoubleTapRippleEffect>
         // getting tap [localPostion] of user
         final lp = details.localPosition;
         setState(() {
-          /// setting [Offset] of user tap to [_tapOffset] global variable
           _tapOffset = Offset(lp.dx, lp.dy);
         });
 
         // getting [size] of child widget
-        final size = _globalKey.currentContext!.size!;
+        final size =
+            _globalKey.currentContext!.size!;
 
-        // child widget [width] initialize to [_width] global variable
         _mWidth = size.width;
-
-        // child widget [height] initialize to [_height] global variable
         _mHeight = size.height;
 
         // starting animation
@@ -174,32 +175,26 @@ class _DoubleTapRippleEffectState extends State<DoubleTapRippleEffect>
       child: Container(
         width: widget.width,
         height: widget.height,
-
-        // added globalKey for getting child widget size
         key: _globalKey,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          // when color == null then color will be transpatent otherwise color will be backgroundColor
-          color: widget.backgroundColor ?? Colors.transparent,
-
-          // boderRadius of container if user passed
+          color: widget.backgroundColor ??
+              Colors.transparent,
           borderRadius: widget.borderRadius,
         ),
         child: Stack(
           children: [
-            // added child widget of user
             widget.child!,
             Opacity(
               opacity: 0.3,
               child: CustomPaint(
-                // ripplePainter is CustomPainer for circular ripple draw
                 painter: RipplePainer(
                   offset: _tapOffset,
                   circleRadius: _animRadiusValue,
                   fillColor: widget.rippleColor,
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -208,27 +203,37 @@ class _DoubleTapRippleEffectState extends State<DoubleTapRippleEffect>
 }
 
 class RipplePainer extends CustomPainter {
+  RipplePainer({
+    this.offset,
+    this.circleRadius,
+    this.fillColor,
+  });
+
   // user tap locations [Offset]
   final Offset? offset;
 
-  // radius of circle which will be ripple color size [circleRadius]
+  // radius of circle which will be ripple color size
   final double? circleRadius;
 
   // fill color of ripple [fillColor]
   final Color? fillColor;
-  RipplePainer({this.offset, this.circleRadius, this.fillColor});
 
   @override
   void paint(Canvas canvas, Size size) {
-    // throw an [rippleColor == null error] if ripple color is null
+    if (fillColor == null) {
+      throw Exception(
+        'rippleColor of TouchRippleEffect == null',
+      );
+    }
     final paint = Paint()
-      ..color = fillColor == null
-          ? throw Exception('rippleColor of TouchRippleEffect == null')
-          : fillColor!
+      ..color = fillColor!
       ..isAntiAlias = true;
 
-    // drawing canvas based on user click offset,radius and paint
-    canvas.drawCircle(offset!, circleRadius!, paint);
+    canvas.drawCircle(
+      offset!,
+      circleRadius!,
+      paint,
+    );
   }
 
   @override
