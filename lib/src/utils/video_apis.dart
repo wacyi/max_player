@@ -231,6 +231,8 @@ class VideoApis {
     final manifest = await yt
         .videos.streamsClient
         .getManifest(youtubeIdOrUrl);
+
+    // Muxed streams (video+audio) — typically 360p, 720p.
     urls.addAll(
       manifest.muxed.map(
         (element) => VideoQalityUrls(
@@ -241,6 +243,26 @@ class VideoApis {
         ),
       ),
     );
+
+    // Also try HLS streams which support higher qualities.
+    if (manifest.hls.isNotEmpty) {
+      for (final stream in manifest.hls) {
+        final quality = int.tryParse(
+              stream.qualityLabel.split('p')[0],
+            ) ??
+            0;
+        // Only add if we don't already have this quality.
+        if (quality > 0 &&
+            !urls.any((u) => u.quality == quality)) {
+          urls.add(
+            VideoQalityUrls(
+              quality: quality,
+              url: stream.url.toString(),
+            ),
+          );
+        }
+      }
+    }
   }
 
   static Future<void> _extractFromManifest(

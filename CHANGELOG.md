@@ -1,3 +1,7 @@
+## 3.0.1
+
+- **Fix**: YouTube videos now extract HLS streams in addition to muxed streams, enabling higher quality options (720p, 1080p+) when available. Previously only muxed streams were used which are typically limited to 360p.
+
 ## 3.0.0
 
 ### New Features
