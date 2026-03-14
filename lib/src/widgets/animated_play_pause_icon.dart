@@ -70,10 +70,8 @@ class _AnimatedPlayPauseIconState
       builder: (context, _) =>
           MaterialIconButton(
         toolTipMesg: maxCtr.isvideoPlaying
-            ? maxCtr.maxPlayerLabels.pause ??
-                'Pause'
-            : maxCtr.maxPlayerLabels.play ??
-                'Play',
+            ? maxCtr.maxPlayerLabels.pause
+            : maxCtr.maxPlayerLabels.play,
         onPressed: maxCtr.isOverlayVisible
             ? maxCtr.togglePlayPauseVideo
             : null,

@@ -179,7 +179,7 @@ class _MaxVideoPlayerState
                 unawaited(maxCtr.retry());
               },
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(widget.maxPlayerLabels.retry),
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor:

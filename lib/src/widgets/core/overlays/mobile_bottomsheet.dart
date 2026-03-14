@@ -263,12 +263,10 @@ class _MobileOverlayBottomControlles extends StatelessWidget {
                       if (maxCtr.isFullScreen)
                         MaterialIconButton(
                           toolTipMesg: maxCtr.isMute
-                              ? maxCtr.maxPlayerLabels
-                                      .unmute ??
-                                  'Unmute'
-                              : maxCtr.maxPlayerLabels
-                                      .mute ??
-                                  'Mute',
+                              ? maxCtr
+                                  .maxPlayerLabels.unmute
+                              : maxCtr
+                                  .maxPlayerLabels.mute,
                           color: itemColor,
                           onPressed: maxCtr.toggleMute,
                           child: Icon(
@@ -300,11 +298,9 @@ class _MobileOverlayBottomControlles extends StatelessWidget {
                       MaterialIconButton(
                         toolTipMesg: maxCtr.isFullScreen
                             ? maxCtr.maxPlayerLabels
-                                    .exitFullScreen ??
-                                'Exit full screen'
+                                .exitFullScreen
                             : maxCtr.maxPlayerLabels
-                                    .fullscreen ??
-                                'Fullscreen',
+                                .fullscreen,
                         color: itemColor,
                         onPressed: () {
                           if (maxCtr.isFullScreen) {

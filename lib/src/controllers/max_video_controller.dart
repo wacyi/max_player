@@ -130,9 +130,9 @@ class MaxVideoController extends _MaxGesturesController {
       () {
         if (isBuffering) {
           emitError(
-            const MaxPlayerError(
+            MaxPlayerError(
               type: MaxPlayerErrorType.timeout,
-              message: 'Buffering timeout exceeded.',
+              message: maxPlayerLabels.bufferingTimeout,
             ),
           );
           maxVideoStateChanger(MaxVideoState.error);

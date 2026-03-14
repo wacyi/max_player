@@ -177,7 +177,7 @@ class _DoubleTapIconState extends State<DoubleTapIcon>
                         opacity:
                             opacityCtr.value,
                         child: Text(
-                          '$tapDuration Sec',
+                          '$tapDuration ${maxCtr.maxPlayerLabels.seconds}',
                           style:
                               const TextStyle(
                             color: Colors.white,
@@ -197,7 +197,7 @@ class _DoubleTapIconState extends State<DoubleTapIcon>
                         opacity:
                             opacityCtr.value,
                         child: Text(
-                          '$tapDuration Sec',
+                          '$tapDuration ${maxCtr.maxPlayerLabels.seconds}',
                           style:
                               const TextStyle(
                             color: Colors.white,
