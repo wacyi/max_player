@@ -1,7 +1,6 @@
 part of 'max_video_controller.dart';
 
 class _MaxGesturesController extends _MaxVideoQualityController {
-  //double tap
   Timer? leftDoubleTapTimer;
   Timer? rightDoubleTapTimer;
   int leftDoubleTapduration = 0;
@@ -11,8 +10,7 @@ class _MaxGesturesController extends _MaxVideoQualityController {
 
   Timer? hoverOverlayTimer;
 
-  ///*handle double tap
-
+  /// Handle left double tap (seek backward).
   void onLeftDoubleTap({int? seconds}) {
     isShowOverlay(true);
     leftDoubleTapTimer?.cancel();
@@ -23,19 +21,24 @@ class _MaxGesturesController extends _MaxVideoQualityController {
     updateLeftTapDuration(
       leftDoubleTapduration += seconds ?? doubleTapForwardSeconds,
     );
-    seekBackward(Duration(seconds: seconds ?? doubleTapForwardSeconds));
+    unawaited(
+      seekBackward(
+        Duration(seconds: seconds ?? doubleTapForwardSeconds),
+      ),
+    );
     update(['double-tap-left']);
     leftDoubleTapTimer = Timer(const Duration(milliseconds: 500), () {
       isLeftDbTapIconVisible = false;
       updateLeftTapDuration(0);
       leftDoubleTapTimer?.cancel();
       if (isvideoPlaying) {
-        playVideo(true);
+        unawaited(playVideo(play: true));
       }
       isShowOverlay(false);
     });
   }
 
+  /// Handle right double tap (seek forward).
   void onRightDoubleTap({int? seconds}) {
     isShowOverlay(true);
     rightDoubleTapTimer?.cancel();
@@ -46,26 +49,31 @@ class _MaxGesturesController extends _MaxVideoQualityController {
     updateRightTapDuration(
       rightDubleTapduration += seconds ?? doubleTapForwardSeconds,
     );
-    seekForward(Duration(seconds: seconds ?? doubleTapForwardSeconds));
+    unawaited(
+      seekForward(
+        Duration(seconds: seconds ?? doubleTapForwardSeconds),
+      ),
+    );
     update(['double-tap-right']);
     rightDoubleTapTimer = Timer(const Duration(milliseconds: 500), () {
       isRightDbTapIconVisible = false;
       updateRightTapDuration(0);
       rightDoubleTapTimer?.cancel();
       if (isvideoPlaying) {
-        playVideo(true);
+        unawaited(playVideo(play: true));
       }
       isShowOverlay(false);
     });
   }
 
-  ///update doubletap durations
+  /// Update left double tap duration.
   void updateLeftTapDuration(int val) {
     leftDoubleTapduration = val;
     update(['double-tap']);
     update(['update-all']);
   }
 
+  /// Update right double tap duration.
   void updateRightTapDuration(int val) {
     rightDubleTapduration = val;
     update(['double-tap']);

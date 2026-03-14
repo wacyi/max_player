@@ -1,18 +1,6 @@
-import '../../max_player.dart';
+import 'package:max_player/max_player.dart';
 
 class OverLayOptions {
-  final MaxVideoState maxVideoState;
-  final Duration videoDuration;
-  final Duration videoPosition;
-  final bool isFullScreen;
-  final bool isLooping;
-  final bool isOverlayVisible;
-  final bool isMute;
-  final bool autoPlay;
-  final String currentVideoPlaybackSpeed;
-  final List<String> videoPlayBackSpeeds;
-  final MaxVideoPlayerType videoPlayerType;
-  final MaxProgressBar maxProgresssBar;
   OverLayOptions({
     required this.maxVideoState,
     required this.videoDuration,
@@ -27,4 +15,17 @@ class OverLayOptions {
     required this.videoPlayerType,
     required this.maxProgresssBar,
   });
+
+  final MaxVideoState maxVideoState;
+  final Duration videoDuration;
+  final Duration videoPosition;
+  final bool isFullScreen;
+  final bool isLooping;
+  final bool isOverlayVisible;
+  final bool isMute;
+  final bool autoPlay;
+  final String currentVideoPlaybackSpeed;
+  final List<String> videoPlayBackSpeeds;
+  final MaxVideoPlayerType videoPlayerType;
+  final MaxProgressBar maxProgresssBar;
 }

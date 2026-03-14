@@ -9,20 +9,6 @@ class _MaxVideoController extends _MaxUiController {
   bool isFullScreen = false;
   bool isvideoPlaying = false;
 
-  List<String> videoPlaybackSpeeds = [
-    '0.25x',
-    '0.5x',
-    '0.75x',
-    '1x',
-    '1.25x',
-    '1.5x',
-    '1.75x',
-    '2x',
-  ];
-
-  ///
-
-  ///*seek video
   /// Seek video to a duration.
   Future<void> seekTo(Duration moment) async {
     await _videoCtr!.seekTo(moment);
@@ -38,7 +24,6 @@ class _MaxVideoController extends _MaxUiController {
     await seekTo(_videoCtr!.value.position - videoSeekDuration);
   }
 
-  ///mute
   /// Toggle mute.
   Future<void> toggleMute() async {
     isMute = !isMute;
@@ -49,23 +34,22 @@ class _MaxVideoController extends _MaxUiController {
     }
   }
 
+  /// Mute the video.
   Future<void> mute() async {
     await setVolume(0);
     update(['volume']);
     update(['update-all']);
   }
 
+  /// Unmute the video.
   Future<void> unMute() async {
     await setVolume(1);
     update(['volume']);
     update(['update-all']);
   }
 
-// Set volume between 0.0 - 1.0,
-  /// 0.0 is mute and 1.0 max volume.
-  Future<void> setVolume(
-    double volume,
-  ) async {
+  /// Set volume between 0.0 and 1.0.
+  Future<void> setVolume(double volume) async {
     await _videoCtr?.setVolume(volume);
     if (volume <= 0) {
       isMute = true;
@@ -76,22 +60,20 @@ class _MaxVideoController extends _MaxUiController {
     update(['update-all']);
   }
 
-  ///*controll play pause
-  Future<void> playVideo(bool val) async {
-    isvideoPlaying = val;
+  /// Control play/pause.
+  Future<void> playVideo({required bool play}) async {
+    isvideoPlaying = play;
     if (isvideoPlaying) {
       isShowOverlay(true);
-      // ignore: unawaited_futures
-      _videoCtr?.play();
+      await _videoCtr?.play();
       isShowOverlay(false, delay: const Duration(seconds: 1));
     } else {
       isShowOverlay(true);
-      // ignore: unawaited_futures
-      _videoCtr?.pause();
+      await _videoCtr?.pause();
     }
   }
 
-  ///toogle play pause
+  /// Toggle play/pause.
   void togglePlayPauseVideo() {
     isvideoPlaying = !isvideoPlaying;
     maxVideoStateChanger(
@@ -99,7 +81,8 @@ class _MaxVideoController extends _MaxUiController {
     );
   }
 
-  ///toogle video player controls
+  /// Toggle video player controls overlay.
+  // ignore: avoid_positional_boolean_parameters
   void isShowOverlay(bool val, {Duration? delay}) {
     showOverlayTimer1?.cancel();
     showOverlayTimer1 = Timer(delay ?? Duration.zero, () {
@@ -111,7 +94,7 @@ class _MaxVideoController extends _MaxUiController {
     });
   }
 
-  ///overlay above video contrller
+  /// Toggle overlay visibility.
   void toggleVideoOverlay() {
     if (!isOverlayVisible) {
       isOverlayVisible = true;
@@ -134,24 +117,37 @@ class _MaxVideoController extends _MaxUiController {
     }
   }
 
-  void setVideoPlayBack(String speed) {
+  /// Set playback speed from a string like '1.5x' or 'Normal'.
+  Future<void> setVideoPlayBack(String speed) async {
     late double pickedSpeed;
 
     if (speed == 'Normal') {
       pickedSpeed = 1.0;
-      _currentPaybackSpeed = 'Normal';
+      _currentPlaybackSpeed = 1.0;
     } else {
       pickedSpeed = double.parse(speed.split('x').first);
-      _currentPaybackSpeed = speed;
+      _currentPlaybackSpeed = pickedSpeed;
     }
-    _videoCtr?.setPlaybackSpeed(pickedSpeed);
+    await _videoCtr?.setPlaybackSpeed(pickedSpeed);
   }
 
-  Future<void> setLooping(bool isLooped) async {
+  /// Set playback speed directly as a double value.
+  Future<void> setPlaybackSpeed(double speed) async {
+    _currentPlaybackSpeed = speed;
+    await _videoCtr?.setPlaybackSpeed(speed);
+    update(['update-all']);
+  }
+
+  /// The current playback speed.
+  double get currentSpeed => _currentPlaybackSpeed;
+
+  /// Set video looping.
+  Future<void> setLooping({required bool isLooped}) async {
     isLooping = isLooped;
     await _videoCtr?.setLooping(isLooping);
   }
 
+  /// Toggle video looping.
   Future<void> toggleLooping() async {
     isLooping = !isLooping;
     await _videoCtr?.setLooping(isLooping);
@@ -159,6 +155,7 @@ class _MaxVideoController extends _MaxUiController {
     update(['update-all']);
   }
 
+  /// Enable fullscreen mode.
   Future<void> enableFullScreen(String tag) async {
     maxLog('-full-screen-enable-entred');
     if (!isFullScreen) {
@@ -185,6 +182,7 @@ class _MaxVideoController extends _MaxUiController {
     }
   }
 
+  /// Disable fullscreen mode.
   Future<void> disableFullScreen(
     BuildContext context,
     String tag, {
@@ -224,34 +222,36 @@ class _MaxVideoController extends _MaxUiController {
     if (!isFullScreen) {
       maxLog('full-screen-enabled');
 
-      Navigator.push(
+      unawaited(Navigator.push<void>(
         mainContext,
-        PageRouteBuilder(
+        PageRouteBuilder<void>(
           fullscreenDialog: true,
-          pageBuilder: (BuildContext context, _, __) => FullScreenView(
+          pageBuilder: (context, _, __) => FullScreenView(
             tag: tag,
             controller: this as MaxVideoController,
           ),
           reverseTransitionDuration: const Duration(milliseconds: 400),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
+          transitionsBuilder:
+              (context, animation, secondaryAnimation, child) =>
+                  FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  ),
         ),
-      );
+      ),);
     }
   }
 
-  /// Calculates video `position` or `duration`
+  /// Calculates video `position` or `duration` as a formatted string.
   String calculateVideoDuration(Duration duration) {
     final totalHour = duration.inHours == 0 ? '' : '${duration.inHours}:';
     final totalMinute = duration.toString().split(':')[1];
-    final totalSeconds = (duration - Duration(minutes: duration.inMinutes))
-        .inSeconds
-        .toString()
-        .padLeft(2, '0');
-    final String videoLength = '$totalHour$totalMinute:$totalSeconds';
+    final totalSeconds =
+        (duration - Duration(minutes: duration.inMinutes))
+            .inSeconds
+            .toString()
+            .padLeft(2, '0');
+    final videoLength = '$totalHour$totalMinute:$totalSeconds';
     return videoLength;
   }
 }

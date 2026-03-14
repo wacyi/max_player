@@ -1,132 +1,84 @@
 <div align="center">
   <img src="mx_logo.png" height="200" alt="Max Player Logo"/>
   <h1>Max Player</h1>
+
+[![pub package](https://img.shields.io/pub/v/max_player.svg)](https://pub.dev/packages/max_player)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://choosealicense.com/licenses/mit/)
+[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android-green.svg)](https://flutter.dev)
+
 </div>
 
-Max Player is a powerful and flexible video player package for Flutter. It supports playing videos from various sources including network URLs, local files, assets, YouTube, and Vimeo. Built on top of `video_player` and `flutter_riverpod`, it offers a customizable UI and a robust controller.
+A professional, production-ready video player for Flutter. Built on `video_player` and `flutter_riverpod` with a YouTube-style UI out of the box.
 
 ## Features
 
--   **Multiple Sources**: Play videos from Network, Assets, Files, YouTube, and Vimeo.
--   **Customizable UI**: Overlay builder for custom controls and UI elements.
--   **Responsive**: Supports full-screen mode, portrait, and landscape orientations.
--   **Controls**: Built-in support for play/pause, seek, volume control, and looping.
--   **Thumbnail**: Display a thumbnail before the video starts.
+- **Multiple Sources** — Network, Assets, Files, YouTube, Vimeo, Vimeo Private
+- **YouTube-Style Controls** — Gradient overlays, double-tap seek, auto-hide controls
+- **Playback Speed** — Configurable speed selector (0.5x to 3x)
+- **Position & Status Streams** — Real-time position, buffered position, and player status
+- **Error Handling** — Error stream, auto-retry, built-in error UI with retry button
+- **Buffering Timeout** — Detects stuck buffering and surfaces timeout errors
+- **Quality Control** — Multiple video qualities (Network & Vimeo)
+- **Fullscreen** — Landscape + immersive mode, auto-rotation
+- **Customizable Theme** — Colors, progress bar, labels, loading widget
+- **Thumbnail** — Display a thumbnail before the video starts
+- **Wakelock** — Keep screen on during playback
+- **iOS + Android** — Mobile-only, no web/desktop
 
 ## Installation
 
-Add `max_player` as a [dependency in your pubspec.yaml file](https://flutter.dev/docs/development/packages-and-plugins/using-packages).
-
 ```yaml
 dependencies:
-  max_player: ^1.1.2
+  max_player: ^3.0.0
 ```
 
-## Usage
+> **Important:** Wrap your app with `ProviderScope` (from `flutter_riverpod`):
 
-### 1. Initialize the Controller
-
-You need to initialize the `MaxPlayerController` with a `PlayVideoFrom` source.
-
-#### Network Video
 ```dart
-import 'package:max_player/max_player.dart';
-
-MaxPlayerController _maxController = MaxPlayerController(
-  playVideoFrom: PlayVideoFrom.network(
-    'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4',
-  ),
-);
+void main() {
+  runApp(const ProviderScope(child: MyApp()));
+}
 ```
 
-#### Asset Video
-```dart
-MaxPlayerController _maxController = MaxPlayerController(
-  playVideoFrom: PlayVideoFrom.asset(
-    'assets/videos/video.mp4',
-  ),
-);
-```
-
-#### File Video
-```dart
-import 'dart:io';
-
-MaxPlayerController _maxController = MaxPlayerController(
-  playVideoFrom: PlayVideoFrom.file(
-    File('/path/to/video.mp4'),
-  ),
-);
-```
-
-#### YouTube Video
-```dart
-MaxPlayerController _maxController = MaxPlayerController(
-  playVideoFrom: PlayVideoFrom.youtube(
-    'https://www.youtube.com/watch?v=YOUR_VIDEO_ID',
-  ),
-);
-```
-
-#### Vimeo Video
-```dart
-MaxPlayerController _maxController = MaxPlayerController(
-  playVideoFrom: PlayVideoFrom.vimeo(
-    'YOUR_VIMEO_VIDEO_ID',
-  ),
-);
-```
-
-### 2. Implementation in Widget
-
-Use the `MaxVideoPlayer` widget to display the player.
+## Quick Start
 
 ```dart
-import 'package:flutter/material.dart';
 import 'package:max_player/max_player.dart';
 
 class VideoScreen extends StatefulWidget {
+  const VideoScreen({super.key});
+
   @override
-  _VideoScreenState createState() => _VideoScreenState();
+  State<VideoScreen> createState() => _VideoScreenState();
 }
 
 class _VideoScreenState extends State<VideoScreen> {
-  late MaxPlayerController _maxController;
+  late final MaxPlayerController _controller;
 
   @override
   void initState() {
     super.initState();
-    _maxController = MaxPlayerController(
+    _controller = MaxPlayerController(
       playVideoFrom: PlayVideoFrom.network(
-        'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4',
-      ),
-      maxPlayerConfig: MaxPlayerConfig(
-        autoPlay: true,
-        isLooping: false,
+        'https://example.com/video.mp4',
       ),
     );
-     // Optional: Initialize immediately if needed, otherwise it lazy loads
-    _maxController.initialise();
+    _controller.initialise();
   }
 
   @override
   void dispose() {
-    _maxController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Max Player Example')),
       body: Center(
-        child: MaxVideoPlayer(
-          controller: _maxController,
-          videoAspectRatio: 16 / 9,
-          videoThumbnail: DecorationImage(
-            image: NetworkImage('https://example.com/thumbnail.jpg'),
-            fit: BoxFit.cover,
-          ),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: MaxVideoPlayer(controller: _controller),
         ),
       ),
     );
@@ -134,56 +86,291 @@ class _VideoScreenState extends State<VideoScreen> {
 }
 ```
 
-### 3. Controller Actions
+## Video Sources
 
-The `MaxPlayerController` provides methods to control the playback programmatically:
+### Network
 
 ```dart
-// Play
-_maxController.play();
-
-// Pause
-_maxController.pause();
-
-// Toggle Play/Pause
-_maxController.togglePlayPause();
-
-// Seek
-_maxController.videoSeekTo(Duration(seconds: 10));
-
-// Mute/Unmute
-_maxController.mute();
-_maxController.unMute();
-
-// Enter Fullscreen
-_maxController.enableFullScreen();
+MaxPlayerController(
+  playVideoFrom: PlayVideoFrom.network(
+    'https://example.com/video.mp4',
+  ),
+);
 ```
 
-### 4. Customizing Colors
-
-You can customize the player colors using `MaxPlayerTheme` in `MaxPlayerConfig`:
+### YouTube
 
 ```dart
-_maxController = MaxPlayerController(
-  playVideoFrom: PlayVideoFrom.network(
-    'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4',
+MaxPlayerController(
+  playVideoFrom: PlayVideoFrom.youtube(
+    'https://www.youtube.com/watch?v=VIDEO_ID',
+    live: false, // Set true for live streams
   ),
-  maxPlayerConfig: MaxPlayerConfig(
+);
+```
+
+### Vimeo
+
+```dart
+MaxPlayerController(
+  playVideoFrom: PlayVideoFrom.vimeo('VIMEO_VIDEO_ID'),
+);
+```
+
+### Vimeo Private
+
+```dart
+MaxPlayerController(
+  playVideoFrom: PlayVideoFrom.vimeoPrivateVideos(
+    'VIMEO_VIDEO_ID',
+    httpHeaders: {'Authorization': 'Bearer YOUR_TOKEN'},
+  ),
+);
+```
+
+### Asset
+
+```dart
+MaxPlayerController(
+  playVideoFrom: PlayVideoFrom.asset('assets/videos/video.mp4'),
+);
+```
+
+### File
+
+```dart
+import 'dart:io';
+
+MaxPlayerController(
+  playVideoFrom: PlayVideoFrom.file(File('/path/to/video.mp4')),
+);
+```
+
+### Network Quality URLs
+
+```dart
+MaxPlayerController(
+  playVideoFrom: PlayVideoFrom.networkQualityUrls(
+    videoUrls: [
+      VideoQalityUrls(quality: 360, url: 'https://example.com/360.mp4'),
+      VideoQalityUrls(quality: 720, url: 'https://example.com/720.mp4'),
+      VideoQalityUrls(quality: 1080, url: 'https://example.com/1080.mp4'),
+    ],
+  ),
+);
+```
+
+## Configuration
+
+### MaxPlayerConfig
+
+```dart
+MaxPlayerController(
+  playVideoFrom: PlayVideoFrom.network('https://example.com/video.mp4'),
+  maxPlayerConfig: const MaxPlayerConfig(
+    autoPlay: true,                    // Auto-play on init (default: true)
+    isLooping: false,                  // Loop video (default: false)
+    wakelockEnabled: true,             // Keep screen on (default: true)
+    videoQualityPriority: [1080, 720, 360],  // Quality preference order
+    availableSpeeds: [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],  // Speed options
+    positionStreamInterval: Duration(milliseconds: 500),   // Position update rate
+    bufferingTimeoutDuration: Duration(seconds: 15),       // Buffering timeout
     theme: MaxPlayerTheme(
       primaryColor: Colors.blue,
       iconColor: Colors.white,
-      playingBarColor: Colors.blueAccent,
-      bufferedBarColor: Colors.grey,
       backgroundColor: Colors.black,
+      playingBarColor: Colors.blue,
+      bufferedBarColor: Colors.grey,
+      circleHandlerColor: Colors.blueAccent,
     ),
   ),
 );
 ```
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+### Player Widget Options
 
-Please make sure to update tests as appropriate.
+```dart
+MaxVideoPlayer(
+  controller: _controller,
+  frameAspectRatio: 16 / 9,
+  videoAspectRatio: 16 / 9,
+  alwaysShowProgressBar: true,
+  matchVideoAspectRatioToFrame: true,
+  videoTitle: const Text('Video Title', style: TextStyle(color: Colors.white)),
+  videoThumbnail: const DecorationImage(
+    image: NetworkImage('https://example.com/thumb.jpg'),
+    fit: BoxFit.cover,
+  ),
+  maxProgressBarConfig: const MaxProgressBarConfig(
+    playingBarColor: Colors.blue,
+    bufferedBarColor: Colors.white24,
+    circleHandlerColor: Colors.blueAccent,
+    height: 4,
+    circleHandlerRadius: 7,
+  ),
+  maxPlayerLabels: const MaxPlayerLabels(
+    play: 'Play',
+    pause: 'Pause',
+    settings: 'Settings',
+    quality: 'Quality',
+    playbackSpeed: 'Speed',
+    loopVideo: 'Loop',
+  ),
+  onLoading: (context) => const CircularProgressIndicator(color: Colors.white),
+);
+```
+
+## Controller API
+
+### Playback
+
+```dart
+_controller.play();
+_controller.pause();
+_controller.togglePlayPause();
+_controller.videoSeekTo(const Duration(seconds: 30));
+_controller.videoSeekForward(const Duration(seconds: 10));
+_controller.videoSeekBackward(const Duration(seconds: 10));
+```
+
+### Volume
+
+```dart
+_controller.mute();
+_controller.unMute();
+_controller.toggleVolume();
+```
+
+### Playback Speed
+
+```dart
+await _controller.setPlaybackSpeed(1.5);
+print(_controller.currentSpeed); // 1.5
+```
+
+### Fullscreen
+
+```dart
+_controller.enableFullScreen();    // Landscape + immersive
+_controller.disableFullScreen(context); // Back to portrait
+```
+
+### Change Video
+
+```dart
+_controller.changeVideo(
+  playVideoFrom: PlayVideoFrom.network('https://example.com/other.mp4'),
+);
+```
+
+### Retry After Error
+
+```dart
+await _controller.retry(); // Re-initializes from the same source
+```
+
+## Streams & State
+
+### Position Stream
+
+```dart
+_controller.positionStream.listen((position) {
+  print('Position: $position');
+});
+```
+
+### Buffered Position Stream
+
+```dart
+_controller.bufferedPositionStream.listen((buffered) {
+  print('Buffered to: $buffered');
+});
+```
+
+### Status Stream
+
+```dart
+_controller.statusStream.listen((status) {
+  // MaxPlayerStatus: idle, initializing, playing, paused, buffering, completed, error
+  print('Status: ${status.name}');
+});
+```
+
+### Error Stream
+
+```dart
+_controller.onError.listen((error) {
+  // MaxPlayerError with type (network, format, source, timeout, unknown) and message
+  print('Error: ${error.type} - ${error.message}');
+});
+```
+
+### State Getters
+
+```dart
+_controller.isPlaying;        // bool
+_controller.isPaused;         // bool
+_controller.isBuffering;      // bool
+_controller.progress;         // 0.0 to 1.0
+_controller.totalDuration;    // Duration?
+_controller.currentSpeed;     // double
+_controller.isFullScreen;     // bool
+_controller.isMute;           // bool
+_controller.currentVideoPosition;  // Duration
+_controller.totalVideoLength;      // Duration
+```
+
+## Platform Setup
+
+### Android
+
+For HTTP video URLs, add to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<manifest>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <application
+        android:networkSecurityConfig="@xml/network_security_config">
+```
+
+Create `android/app/src/main/res/xml/network_security_config.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+```
+
+### iOS
+
+For HTTP video URLs, add to `ios/Runner/Info.plist`:
+
+```xml
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+```
+
+## Example
+
+See the [example](example/) directory for a complete app with multiple demos:
+
+- Basic player with video list
+- Playback speed & streams dashboard
+- Error handling & retry
+- Video list with thumbnails
+- Custom themed player
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## Author
 
@@ -192,7 +379,6 @@ Please make sure to update tests as appropriate.
 - **Email**: [info@abdorizak.dev](mailto:info@abdorizak.dev)
 - **GitHub**: [Abdirizak Abdalla](https://github.com/abdorizak)
 - **Website**: [abdorizak.dev](https://abdorizak.dev)
-
 
 ## License
 

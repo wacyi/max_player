@@ -1,6 +1,6 @@
 name: max_player
 description: Max Player is a simple package to that helps you to play videos from your local, network and from the internet weather youtube, vimeo, etc.
-version: 2.0.1
+version: 3.0.0
 homepage: https://abdorizak.dev
 repository: https://github.com/abdorizak/max_player
 issue_tracker: https://github.com/abdorizak/max_player/issues
@@ -10,19 +10,18 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  dio: ^5.9.0
   flutter:
     sdk: flutter
+  flutter_riverpod: ^3.1.0
+  very_good_analysis: ^10.0.0
   video_player: ^2.10.1
-  dio: ^5.9.0
   wakelock_plus: ^1.1.0
   youtube_explode_dart: ^3.0.5
-  very_good_analysis: ^5.0.0+1
-  flutter_riverpod: ^3.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
 
 platforms:
   android:
